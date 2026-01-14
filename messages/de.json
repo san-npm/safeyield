@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "title": "Yiield - Beste Stablecoin-Renditen | DeFi APY Vergleich",
+    "description": "Finden Sie die besten Stablecoin-Renditen mit Yiield. Vergleichen Sie APY-Raten von DeFi-Protokollen für USDC, USDT, DAI. Sichere Echtzeit-Daten.",
+    "keywords": "beste Stablecoin-Renditen, Stablecoin APY, DeFi-Renditen, USDC-Rendite, USDT-Rendite, Yield Farming, Krypto-Zinsen"
+  },
+  "nav": {
+    "home": "Startseite",
+    "pools": "Pools",
+    "about": "Über uns",
+    "language": "Sprache"
+  },
+  "hero": {
+    "title": "Beste Stablecoin-Renditen",
+    "subtitle": "Finden Sie die höchsten APY-Raten bei DeFi-Protokollen",
+    "description": "Yiield aggregiert die besten Stablecoin-Renditen von vertrauenswürdigen DeFi-Protokollen. Vergleichen Sie APY, Sicherheitsbewertungen und TVL, um Ihre Renditen sicher zu maximieren.",
+    "cta": "Renditen Erkunden"
+  },
+  "filters": {
+    "chain": "Blockchain",
+    "stablecoin": "Stablecoin",
+    "protocol": "Protokoll",
+    "minTVL": "Min TVL",
+    "search": "Protokolle suchen..."
+  },
+  "table": {
+    "protocol": "Protokoll",
+    "chain": "Chain",
+    "apy": "APY",
+    "tvl": "TVL",
+    "security": "Sicherheit",
+    "details": "Details"
+  },
+  "footer": {
+    "description": "Yiield hilft Ihnen, die besten Stablecoin-Renditen über DeFi-Protokolle zu finden.",
+    "disclaimer": "Haftungsausschluss: Kryptowährungs-Investitionen sind mit Risiken verbunden. Recherchieren Sie immer selbst.",
+    "rights": "Alle Rechte vorbehalten."
+  }
+}

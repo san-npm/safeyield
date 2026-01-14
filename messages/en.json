@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "title": "Yiield - Best Stablecoin Yields | Compare Top APY Rates",
+    "description": "Find the best stablecoin yields with Yiield. Compare top APY rates across DeFi protocols including USDC, USDT, DAI. Secure, real-time data for optimal yield farming.",
+    "keywords": "best stablecoin yields, stablecoin APY, DeFi yields, USDC yields, USDT yields, yield farming, crypto interest rates, stablecoin returns"
+  },
+  "nav": {
+    "home": "Home",
+    "pools": "Pools",
+    "about": "About",
+    "language": "Language"
+  },
+  "hero": {
+    "title": "Best Stablecoin Yields",
+    "subtitle": "Find the highest APY rates across DeFi protocols",
+    "description": "Yiield aggregates the best stablecoin yields from trusted DeFi protocols. Compare APY rates, security scores, and TVL to maximize your returns safely.",
+    "cta": "Explore Yields"
+  },
+  "filters": {
+    "chain": "Blockchain",
+    "stablecoin": "Stablecoin",
+    "protocol": "Protocol",
+    "minTVL": "Min TVL",
+    "search": "Search protocols..."
+  },
+  "table": {
+    "protocol": "Protocol",
+    "chain": "Chain",
+    "apy": "APY",
+    "tvl": "TVL",
+    "security": "Security",
+    "details": "Details"
+  },
+  "footer": {
+    "description": "Yiield helps you find the best stablecoin yields across DeFi protocols.",
+    "disclaimer": "Disclaimer: Cryptocurrency investments involve risks. Always do your own research.",
+    "rights": "All rights reserved."
+  }
+}

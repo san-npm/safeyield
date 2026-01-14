@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "title": "Yiield - Mejores Rendimientos de Stablecoins | Comparador APY",
+    "description": "Encuentra los mejores rendimientos de stablecoins con Yiield. Compara tasas APY de protocolos DeFi para USDC, USDT, DAI. Datos seguros en tiempo real.",
+    "keywords": "mejores rendimientos stablecoin, APY stablecoin, rendimientos DeFi, rendimiento USDC, rendimiento USDT, yield farming, tasas crypto"
+  },
+  "nav": {
+    "home": "Inicio",
+    "pools": "Pools",
+    "about": "Acerca de",
+    "language": "Idioma"
+  },
+  "hero": {
+    "title": "Mejores Rendimientos de Stablecoins",
+    "subtitle": "Encuentra las mejores tasas APY en protocolos DeFi",
+    "description": "Yiield agrega los mejores rendimientos de stablecoins de protocolos DeFi confiables. Compara APY, puntuaciones de seguridad y TVL para maximizar tus retornos de forma segura.",
+    "cta": "Explorar Rendimientos"
+  },
+  "filters": {
+    "chain": "Blockchain",
+    "stablecoin": "Stablecoin",
+    "protocol": "Protocolo",
+    "minTVL": "TVL Mín",
+    "search": "Buscar protocolos..."
+  },
+  "table": {
+    "protocol": "Protocolo",
+    "chain": "Cadena",
+    "apy": "APY",
+    "tvl": "TVL",
+    "security": "Seguridad",
+    "details": "Detalles"
+  },
+  "footer": {
+    "description": "Yiield te ayuda a encontrar los mejores rendimientos de stablecoins en protocolos DeFi.",
+    "disclaimer": "Descargo: Las inversiones en criptomonedas conllevan riesgos. Investiga siempre por tu cuenta.",
+    "rights": "Todos los derechos reservados."
+  }
+}

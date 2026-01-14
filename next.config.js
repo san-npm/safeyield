@@ -1,3 +1,5 @@
+const withNextIntl = require('next-intl/plugin')('./i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
@@ -8,7 +10,7 @@ const nextConfig = {
   // Pour Aleph Cloud - pas de server-side rendering
   experimental: {
     // Optimisations pour le build statique
-  }
-}
+  },
+};
 
-module.exports = nextConfig
+module.exports = withNextIntl(nextConfig);

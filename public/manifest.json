@@ -1,0 +1,21 @@
+{
+  "name": "Yiield - Best Stablecoin Yields",
+  "short_name": "Yiield",
+  "description": "Find the best stablecoin yields across DeFi protocols. Compare APY rates for USDC, USDT, DAI and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# Yiield - Best Stablecoin Yields
+# https://yiield.com
+
+User-agent: *
+Allow: /
+Allow: /en/
+Allow: /fr/
+Allow: /es/
+Allow: /it/
+Allow: /de/
+
+# AI Crawlers - ChatGPT, Claude, Perplexity
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+# Sitemap
+Sitemap: https://yiield.com/sitemap.xml

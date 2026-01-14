@@ -9,8 +9,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Palette SafeYield - Tons verts pour la sécurité/confiance
-        safe: {
+        // Palette Yiield - Modern yield optimization
+        primary: {
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
