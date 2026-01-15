@@ -2,7 +2,6 @@
 
 Dashboard de rendements stablecoins sécurisés.
 
-![SafeYield Preview](./docs/preview.png)
 
 ## 🎯 Fonctionnalités
 
