@@ -1,21 +1,20 @@
-# Robots.txt for yiield.xyz
-# https://yiield.xyz/robots.txt
-
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
 
 # Sitemaps
 Sitemap: https://yiield.xyz/sitemap.xml
 
-# Crawl-delay (optional, for politeness)
-Crawl-delay: 1
+# Google bots
+User-agent: Googlebot
+Allow: /
 
-# Block unnecessary paths
-Disallow: /api/
-Disallow: /_next/
-Disallow: /static/
+User-agent: Googlebot-Image
+Allow: /
 
-# Allow important resources
-Allow: /og-image.png
-Allow: /favicon.ico
-Allow: /manifest.json
+# Bing
+User-agent: Bingbot
+Allow: /
+
+# Performance: reduce crawl rate if needed (optional)
+# Crawl-delay: 1
