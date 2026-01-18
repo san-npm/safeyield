@@ -11,7 +11,7 @@ export interface YieldPool {
   symbol: string; // ex: USDC, USDT, DAI
   stablecoin: StablecoinType;
   stablecoinLogo?: string;
-  currency: 'USD' | 'EUR'; // Devise de base du stablecoin
+  currency: 'USD' | 'EUR' | 'GOLD'; // Devise de base du stablecoin
   apy: number;
   apyBase: number;
   apyReward: number;
@@ -30,15 +30,19 @@ export interface YieldPool {
   apyHistory: ApyHistoryPoint[];
 }
 
-export type StablecoinType = 
-  | 'USDC' 
-  | 'USDT' 
-  | 'USDT0'
+export type StablecoinType =
+  | 'USDC'
+  | 'USDT'
   | 'DAI'
-  | 'USDS'
   | 'PYUSD'
-  | 'EURe' 
-  | 'EURC';
+  | 'USDe'
+  | 'USDS'
+  | 'USD1'
+  | 'USDG'
+  | 'EURe'
+  | 'EURC'
+  | 'XAUT'
+  | 'PAXG';
 
 export interface ApyHistoryPoint {
   timestamp: Date;
@@ -70,6 +74,7 @@ export type SecurityRating =
 
 // Types pour les filtres
 export interface FilterState {
+  protocols: ProtocolType[];
   stablecoins: StablecoinType[];
   chains: string[];
   minApy: number;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { YieldPool, StablecoinType, FilterState, ProtocolType } from '@/types';
-import { MOCK_POOLS, filterPools, getTopPools } from '@/data/mockPools';
+import { fetchAllCustomPools } from '@/utils/customProtocolsApi';
 
 const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 heure (aligné sur DefiLlama)
 
@@ -8,7 +8,15 @@ const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 heure (aligné sur DefiLlama)
 // 🎛️ CONFIGURATION
 // ============================================
 const USE_REAL_API = true;
-const MIN_SECURITY_SCORE = 70;
+const MIN_SECURITY_SCORE = 65; // Abaissé de 70 à 65 pour inclure plus de pools de qualité
+const TOP_POOLS_MIN_SCORE = 80; // Score minimum pour être dans le top 3
+
+// Cache pour optimiser les performances
+let poolsCache: { data: YieldPool[] | null; timestamp: number } = {
+  data: null,
+  timestamp: 0,
+};
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes de cache
 
 interface UsePoolsReturn {
   pools: YieldPool[];
@@ -23,6 +31,7 @@ interface UsePoolsReturn {
 }
 
 const defaultFilters: FilterState = {
+  protocols: [],
   stablecoins: [],
   chains: [],
   minApy: 0,
@@ -38,39 +47,79 @@ const SUPPORTED_STABLECOINS: Record<string, StablecoinType> = {
   'USDC.E': 'USDC',
   'USDCE': 'USDC',
   'USDT': 'USDT',
-  'USDT0': 'USDT0',
   'DAI': 'DAI',
   'SDAI': 'DAI',
-  'USDS': 'USDS',
-  'SUSDS': 'USDS',
   'PYUSD': 'PYUSD',
+  'USDE': 'USDe',
+  'USDS': 'USDS',
+  'SUSDS': 'USDS', // Sky USDS
+  'USD1': 'USD1',
+  'USDG': 'USDG',
   'EURE': 'EURe',
   'EUROE': 'EURe',
   'EURC': 'EURC',
+  'XAUT': 'XAUT',
+  'PAXG': 'PAXG',
+};
+
+// Mapping spécial pour les vaults Lagoon dont les symboles ne correspondent pas aux stablecoins standards
+// Ces vaults ont des noms custom mais déposent des stablecoins sous-jacents
+const LAGOON_VAULT_MAPPING: Record<string, StablecoinType> = {
+  // Vaults USDC
+  'SYNUSD': 'USDC',
+  'SYNUSD+': 'USDC',
+  'SYNUSDX': 'USDC',
+  'ALUSD': 'USDC',
+  'UUSCC--': 'USDC',
+  'HUBCAP': 'USDC', // HUBCAP-USDC vault
+  'MOONUSDC': 'USDC',
+  'GAMIUSDC': 'USDC',
+  'GAMISDUSDC': 'USDC',
+  'TURTLEAVALANCHEUSDC': 'USDC',
+  '9SUSDC': 'USDC',
+  'DTUSDC': 'USDC',
+  'EXUSDC': 'USDC',
+  // Vaults USDT
+  'DAMMSTABLE': 'USDT',
+  'YIELDUSDT': 'USDT',
+  // Autres USD stablecoins
+  'MTUSD': 'USDC', // MT USD vault (USDC-backed)
+  'TACUSN': 'USDC', // TAC USN vault
+  'DTAUSD': 'USDC', // DTA USD vault
+  // EUR stablecoins
+  'DTEURC': 'EURC',
 };
 
 // Logos des stablecoins (CoinGecko / TrustWallet)
 export const STABLECOIN_LOGOS: Record<StablecoinType, string> = {
   'USDC': 'https://assets.coingecko.com/coins/images/6319/small/usdc.png',
   'USDT': 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
-  'USDT0': 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
   'DAI': 'https://assets.coingecko.com/coins/images/9956/small/dai-multi-collateral-mcd.png',
-  'USDS': 'https://assets.coingecko.com/coins/images/39926/small/usds.webp',
   'PYUSD': 'https://assets.coingecko.com/coins/images/31212/small/PYUSD_Logo_%282%29.png',
-  'EURe': 'https://assets.coingecko.com/coins/images/23354/standard/eure.png',
+  'USDe': '/logos/usde.svg',
+  'USDS': '/logos/usds.svg',
+  'USD1': '/logos/usd1.png',
+  'USDG': '/logos/GDN_USDG_Token.svg',
+  'EURe': '/logos/eure.svg',
   'EURC': 'https://assets.coingecko.com/coins/images/26045/small/euro-coin.png',
+  'XAUT': 'https://assets.coingecko.com/coins/images/10481/small/Tether_Gold.png',
+  'PAXG': 'https://assets.coingecko.com/coins/images/9519/small/paxg.png',
 };
 
-// Devise de base pour chaque stablecoin (USD ou EUR)
-export const STABLECOIN_CURRENCY: Record<StablecoinType, 'USD' | 'EUR'> = {
+// Devise de base pour chaque stablecoin (USD, EUR ou GOLD)
+export const STABLECOIN_CURRENCY: Record<StablecoinType, 'USD' | 'EUR' | 'GOLD'> = {
   'USDC': 'USD',
   'USDT': 'USD',
-  'USDT0': 'USD',
   'DAI': 'USD',
-  'USDS': 'USD',
   'PYUSD': 'USD',
+  'USDe': 'USD',
+  'USDS': 'USD',
+  'USD1': 'USD',
+  'USDG': 'USD',
   'EURe': 'EUR',
   'EURC': 'EUR',
+  'XAUT': 'GOLD',
+  'PAXG': 'GOLD',
 };
 
 // ============================================
@@ -87,6 +136,8 @@ const SUPPORTED_CHAINS = [
   'Solana',
   'Gnosis',
   'Linea',
+  'Plasma',
+  'Stable',
 ];
 
 // Logos des chaînes - Sources multiples avec fallbacks
@@ -100,7 +151,9 @@ export const CHAIN_LOGOS: Record<string, string> = {
   'Avalanche': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png',
   'Solana': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png',
   'Gnosis': 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/xdai/info/logo.png',
-  'Linea': 'https://assets.coingecko.com/coins/images/33286/small/linea-logo.png',
+  'Linea': '/logos/Linea-Token_Square.svg',
+  'Plasma': '/logos/plasma.svg',
+  'Stable': 'https://pbs.twimg.com/profile_images/1907025301030486016/Xb2R6I6__400x400.jpg',
 };
 
 // ============================================
@@ -147,7 +200,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: 'https://app.compound.finance/markets',
     logo: 'https://icons.llama.fi/compound-v3.png',
   },
-  'morpho': {
+  'morpho-v1': {
     type: 'lending',
     name: 'Morpho',
     audits: 3,
@@ -167,7 +220,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
   },
   'spark': {
     type: 'lending',
-    name: 'Spark',
+    name: 'SparkLend',
     audits: 3,
     launchYear: 2023,
     exploits: 0,
@@ -183,14 +236,14 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: 'https://fluid.instadapp.io/lending',
     logo: 'https://icons.llama.fi/fluid.png',
   },
-  'euler': {
+  'euler-v2': {
     type: 'lending',
     name: 'Euler V2',
     audits: 3,
     launchYear: 2024, // V2 relancé après l'exploit V1
     exploits: 0, // V2 est nouveau, V1 avait l'exploit
     earnUrl: 'https://app.euler.finance/',
-    logo: 'https://icons.llama.fi/euler.png',
+    logo: '/logos/euler.svg',
   },
   'silo-v2': {
     type: 'lending',
@@ -210,6 +263,15 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: 'https://app.silo.finance/',
     logo: 'https://icons.llama.fi/silo.png',
   },
+  'realtoken-rmm': {
+    type: 'lending',
+    name: 'RealToken RMM',
+    audits: 2,
+    launchYear: 2022,
+    exploits: 0,
+    earnUrl: 'https://rmm.realtoken.network/',
+    logo: 'https://realt.co/wp-content/uploads/2023/06/realtoken-symbol-logo.svg',
+  },
   'radiant-v2': {
     type: 'lending',
     name: 'Radiant V2',
@@ -219,6 +281,15 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: 'https://app.radiant.capital/',
     logo: 'https://icons.llama.fi/radiant-v2.png',
   },
+  'venus-core-pool': {
+    type: 'lending',
+    name: 'Venus',
+    audits: 3,
+    launchYear: 2020,
+    exploits: 1, // Mai 2021 - manipulation oracle
+    earnUrl: 'https://app.venus.io/core-pool',
+    logo: '/logos/venus.svg',
+  },
   'venus': {
     type: 'lending',
     name: 'Venus',
@@ -226,7 +297,16 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2020,
     exploits: 1, // Mai 2021 - manipulation oracle
     earnUrl: 'https://app.venus.io/core-pool',
-    logo: 'https://icons.llama.fi/venus.png',
+    logo: '/logos/venus.svg',
+  },
+  'sky-lending': {
+    type: 'lending',
+    name: 'Sky',
+    audits: 5,
+    launchYear: 2024, // Rebranding de MakerDAO (2017) en 2024
+    exploits: 0,
+    earnUrl: 'https://info.sky.money/savings',
+    logo: '/logos/sky.svg',
   },
   'benqi-lending': {
     type: 'lending',
@@ -235,7 +315,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2021,
     exploits: 0,
     earnUrl: 'https://app.benqi.fi/markets',
-    logo: 'https://assets.coingecko.com/coins/images/16065/small/benqi.png',
+    logo: '/logos/benqi.png',
   },
   'benqi': {
     type: 'lending',
@@ -244,7 +324,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2021,
     exploits: 0,
     earnUrl: 'https://app.benqi.fi/markets',
-    logo: 'https://assets.coingecko.com/coins/images/16065/small/benqi.png',
+    logo: '/logos/benqi.png',
   },
   'kamino-lending': {
     type: 'lending',
@@ -253,7 +333,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2023,
     exploits: 0,
     earnUrl: 'https://app.kamino.finance/lending',
-    logo: 'https://icons.llama.fi/kamino-lending.png',
+    logo: '/logos/kamino.svg',
   },
   'marginfi': {
     type: 'lending',
@@ -264,6 +344,15 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: 'https://app.marginfi.com/',
     logo: 'https://icons.llama.fi/marginfi.png',
   },
+  'jupiter-lend': {
+    type: 'lending',
+    name: 'Jupiter Lend',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://jup.ag/lend/earn',
+    logo: '/logos/jupiter.svg',
+  },
   'ajna': {
     type: 'lending',
     name: 'Ajna',
@@ -272,6 +361,51 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     exploits: 0,
     earnUrl: 'https://app.ajna.finance/',
     logo: 'https://icons.llama.fi/ajna.png',
+  },
+  'drift': {
+    type: 'lending',
+    name: 'Drift',
+    audits: 3,
+    launchYear: 2021,
+    exploits: 0,
+    earnUrl: 'https://app.drift.trade/',
+    logo: 'https://icons.llama.fi/drift.png',
+  },
+  'solend': {
+    type: 'lending',
+    name: 'Solend',
+    audits: 2,
+    launchYear: 2021,
+    exploits: 1,
+    earnUrl: 'https://solend.fi/',
+    logo: 'https://icons.llama.fi/solend.png',
+  },
+  'maple': {
+    type: 'lending',
+    name: 'Maple',
+    audits: 3,
+    launchYear: 2021,
+    exploits: 0,
+    earnUrl: 'https://app.maple.finance/',
+    logo: 'https://icons.llama.fi/maple.png',
+  },
+  'cap': {
+    type: 'lending',
+    name: 'Cap Money',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://cap.app/',
+    logo: 'https://icons.llama.fi/cap.png',
+  },
+  'dolomite': {
+    type: 'lending',
+    name: 'Dolomite',
+    audits: 2,
+    launchYear: 2022,
+    exploits: 0,
+    earnUrl: 'https://app.dolomite.io/',
+    logo: '/logos/dolomite.png',
   },
 
   // ========== VAULT MANAGERS ==========
@@ -282,16 +416,16 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2024,
     exploits: 0,
     earnUrl: 'https://app.lagoon.finance/',
-    logo: 'https://pbs.twimg.com/profile_images/1729106339597271040/HnIxAGzf_400x400.jpg',
+    logo: '/logos/lagoon.ico',
   },
-  'wildcat': {
+  'wildcat-protocol': {
     type: 'vault',
     name: 'Wildcat',
     audits: 2,
     launchYear: 2024,
     exploits: 0,
     earnUrl: 'https://app.wildcat.finance/',
-    logo: 'https://icons.llama.fi/wildcat.png',
+    logo: '/logos/wildcat.svg',
   },
   'steakhouse': {
     type: 'vault',
@@ -300,7 +434,16 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2023,
     exploits: 0,
     earnUrl: 'https://www.steakhouse.financial/',
-    logo: 'https://icons.llama.fi/steakhouse.png',
+    logo: '/logos/steakhouse.svg',
+  },
+  'concrete': {
+    type: 'vault',
+    name: 'Concrete',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://app.concrete.xyz/earn',
+    logo: 'https://icons.llama.fi/concrete.png',
   },
   'veda': {
     type: 'vault',
@@ -368,16 +511,6 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: '',
     logo: 'https://icons.llama.fi/euler.png',
   },
-  'solend': {
-    type: 'lending',
-    name: 'Solend',
-    audits: 2,
-    launchYear: 2021,
-    exploits: 2,
-    excludedDueToExploit: true, // Multiples incidents de gouvernance + oracle
-    earnUrl: '',
-    logo: 'https://icons.llama.fi/solend.png',
-  },
   'agave': {
     type: 'lending',
     name: 'Agave',
@@ -395,17 +528,20 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
  * Filtre : uniquement Lending + Vault Managers
  */
 async function fetchFromDefiLlama(): Promise<YieldPool[]> {
+  // Vérifier le cache
+  const now = Date.now();
+  if (poolsCache.data && (now - poolsCache.timestamp) < CACHE_TTL) {
+    return poolsCache.data;
+  }
   const response = await fetch('https://yields.llama.fi/pools');
-  
+
   if (!response.ok) {
     throw new Error(`Erreur API DefiLlama: ${response.status}`);
   }
-  
+
   const json = await response.json();
   const pools = json.data || [];
-  
-  console.log(`📊 DefiLlama: ${pools.length} pools totaux reçus`);
-  
+
   // Filtrer et transformer les données
   const filteredPools = pools
     .filter((pool: any) => {
@@ -423,9 +559,28 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
       if (!SUPPORTED_CHAINS.includes(pool.chain)) return false;
       
       // Seulement les stablecoins supportés
-      const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || '';
-      const isSupported = Object.keys(SUPPORTED_STABLECOINS).some(s => symbol.includes(s));
-      if (!isSupported) return false;
+      const symbol = pool.symbol?.toUpperCase() || '';
+
+      // Filtrer les pools LP qui contiennent des tokens non-stablecoins (comme UXLINK-USDT)
+      if (symbol.includes('-')) {
+        // Si le symbole contient un tiret, vérifier que les deux parties sont des stablecoins
+        const parts = symbol.split('-');
+        const allPartsAreStablecoins = parts.every((part: string) =>
+          Object.keys(SUPPORTED_STABLECOINS).some(s => part.includes(s))
+        );
+        if (!allPartsAreStablecoins) return false;
+      }
+
+      const mainSymbol = symbol.split('-')[0] || '';
+
+      // Pour Lagoon, vérifier le mapping spécial
+      if (pool.project === 'lagoon' && LAGOON_VAULT_MAPPING[mainSymbol]) {
+        // Ce vault Lagoon est mappé à un stablecoin supporté
+      } else {
+        // Pour les autres protocoles, vérification standard
+        const isSupported = Object.keys(SUPPORTED_STABLECOINS).some(s => mainSymbol.includes(s));
+        if (!isSupported) return false;
+      }
       
       // TVL minimum 100K
       if (pool.tvlUsd < 100_000) return false;
@@ -437,11 +592,14 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
     })
     .map((pool: any) => transformPool(pool))
     .filter((pool: YieldPool) => pool.securityScore >= MIN_SECURITY_SCORE)
-    .sort((a: YieldPool, b: YieldPool) => b.apy - a.apy)
-    .slice(0, 100);
-  
-  console.log(`✅ ${filteredPools.length} pools (Lending + Vault Managers) avec score ≥ ${MIN_SECURITY_SCORE}`);
-  
+    .sort((a: YieldPool, b: YieldPool) => b.apy - a.apy);
+
+  // Mettre à jour le cache
+  poolsCache = {
+    data: filteredPools,
+    timestamp: Date.now(),
+  };
+
   return filteredPools;
 }
 
@@ -450,7 +608,7 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
  */
 function transformPool(pool: any): YieldPool {
   const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || 'USDC';
-  const stablecoin = detectStablecoin(symbol);
+  const stablecoin = detectStablecoin(symbol, pool.project);
   const protocol = ALLOWED_PROTOCOLS[pool.project];
   
   if (!protocol) {
@@ -462,7 +620,7 @@ function transformPool(pool: any): YieldPool {
   // Calcul du score de sécurité (0-100)
   const auditScore = Math.min(25, protocol.audits * 6);
   const ageScore = protocolAge > 730 ? 25 : protocolAge > 365 ? 20 : protocolAge > 180 ? 12 : 5;
-  const tvlScore = pool.tvlUsd > 500_000_000 ? 25 : pool.tvlUsd > 100_000_000 ? 22 : pool.tvlUsd > 10_000_000 ? 18 : 10;
+  const tvlScore = pool.tvlUsd > 500_000_000 ? 25 : pool.tvlUsd > 100_000_000 ? 22 : pool.tvlUsd > 10_000_000 ? 18 : pool.tvlUsd > 1_000_000 ? 14 : 10;
   const exploitScore = protocol.exploits === 0 ? 25 : protocol.exploits === 1 ? 12 : 0;
   const securityScore = auditScore + ageScore + tvlScore + exploitScore;
   
@@ -493,11 +651,71 @@ function transformPool(pool: any): YieldPool {
   };
 }
 
-function detectStablecoin(symbol: string): StablecoinType {
+function detectStablecoin(symbol: string, project?: string): StablecoinType {
+  // Vérifier d'abord le mapping Lagoon si c'est un pool Lagoon
+  if (project === 'lagoon' && LAGOON_VAULT_MAPPING[symbol]) {
+    return LAGOON_VAULT_MAPPING[symbol];
+  }
+
+  // Détection standard pour les autres protocoles
   for (const [key, value] of Object.entries(SUPPORTED_STABLECOINS)) {
     if (symbol.includes(key)) return value;
   }
+
   return 'USDC';
+}
+
+// ============================================
+// FILTRAGE ET TRI DES POOLS
+// ============================================
+
+function filterPools(pools: YieldPool[], filters: FilterState): YieldPool[] {
+  return pools.filter(pool => {
+    // Filtre par type de protocole
+    if (filters.protocols.length > 0 && pool.protocolType && !filters.protocols.includes(pool.protocolType)) {
+      return false;
+    }
+
+    // Filtre par chaîne
+    if (filters.chains.length > 0 && !filters.chains.includes(pool.chain)) {
+      return false;
+    }
+
+    // Filtre par stablecoin
+    if (filters.stablecoins.length > 0 && !filters.stablecoins.includes(pool.stablecoin)) {
+      return false;
+    }
+
+    // Filtre par APY minimum
+    if (pool.apy < filters.minApy) {
+      return false;
+    }
+
+    // Filtre par TVL minimum
+    if (pool.tvl < filters.minTvl) {
+      return false;
+    }
+
+    // Filtre par score de sécurité minimum
+    if (pool.securityScore < filters.minSecurityScore) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function getTopPools(pools: YieldPool[], count: number = 3): YieldPool[] {
+  return pools
+    .filter(pool => pool.securityScore >= TOP_POOLS_MIN_SCORE)
+    .sort((a, b) => {
+      // Tri par score de sécurité d'abord, puis par APY
+      if (b.securityScore !== a.securityScore) {
+        return b.securityScore - a.securityScore;
+      }
+      return b.apy - a.apy;
+    })
+    .slice(0, count);
 }
 
 // ============================================
@@ -515,38 +733,102 @@ export function usePools(): UsePoolsReturn {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       let data: YieldPool[];
-      
+
       if (USE_REAL_API) {
         // ====== 🌐 MODE API RÉELLE ======
-        console.log('🔄 Chargement des données depuis DefiLlama...');
+        // Charger d'abord DefiLlama (rapide avec cache)
         data = await fetchFromDefiLlama();
+
+        // Afficher immédiatement les pools DefiLlama
+        setPools(data);
+        setLastUpdated(new Date());
+        setIsLoading(false);
+
+        // Charger les pools personnalisés en arrière-plan (non-bloquant)
+        fetchAllCustomPools().then(customPools => {
+          // Transformer les pools partiels en pools complets avec scoring de sécurité
+          const completeCustomPools: YieldPool[] = customPools.map(pool => {
+            // Trouver la config du protocole dans ALLOWED_PROTOCOLS
+            const protocolKey = Object.keys(ALLOWED_PROTOCOLS).find(
+              key => ALLOWED_PROTOCOLS[key].name === pool.protocol
+            );
+            const protocolInfo = protocolKey ? ALLOWED_PROTOCOLS[protocolKey] : null;
+
+            if (!protocolInfo) {
+              console.warn(`⚠️ Protocole non trouvé dans ALLOWED_PROTOCOLS: ${pool.protocol}`);
+              return null;
+            }
+
+            // Calculer le score de sécurité (même logique que transformPool)
+            const protocolAge = (new Date().getFullYear() - protocolInfo.launchYear) * 365;
+            const auditScore = Math.min(25, protocolInfo.audits * 6);
+            const ageScore = protocolAge > 730 ? 25 : protocolAge > 365 ? 20 : protocolAge > 180 ? 12 : 5;
+            const tvlScore = (pool.tvl || 0) > 500_000_000 ? 25 : (pool.tvl || 0) > 100_000_000 ? 22 : (pool.tvl || 0) > 10_000_000 ? 18 : 10;
+            const exploitScore = protocolInfo.exploits === 0 ? 25 : protocolInfo.exploits === 1 ? 12 : 0;
+            const securityScore = auditScore + ageScore + tvlScore + exploitScore;
+
+            return {
+              ...pool,
+              protocolLogo: protocolInfo.logo,
+              protocolType: protocolInfo.type,
+              chainLogo: CHAIN_LOGOS[pool.chain || ''] || '',
+              stablecoinLogo: STABLECOIN_LOGOS[pool.stablecoin as StablecoinType] || '',
+              currency: STABLECOIN_CURRENCY[pool.stablecoin as StablecoinType] || 'USD',
+              tvlChange24h: 0,
+              securityScore,
+              audits: protocolInfo.audits,
+              protocolAge,
+              exploits: protocolInfo.exploits,
+              exploitHistory: [],
+              poolUrl: pool.poolUrl || protocolInfo.earnUrl,
+              lastUpdated: new Date(),
+              apyHistory: [],
+            } as YieldPool;
+          }).filter(pool => pool !== null) as YieldPool[];
+
+          // Combiner avec les pools DefiLlama déjà affichés
+          const combinedPools = [...data, ...completeCustomPools];
+
+          // Déduplication: garder seulement les pools uniques basés sur protocol + chain + stablecoin
+          const uniquePoolsMap = new Map<string, YieldPool>();
+
+          for (const pool of combinedPools) {
+            // Créer une clé unique basée sur protocole, chaîne et stablecoin
+            const key = `${pool.protocol}-${pool.chain}-${pool.stablecoin}`.toLowerCase();
+
+            // Si le pool n'existe pas encore, ou si le nouveau pool a un meilleur APY, on le garde
+            const existing = uniquePoolsMap.get(key);
+            if (!existing || pool.apy > existing.apy) {
+              uniquePoolsMap.set(key, pool);
+            }
+          }
+
+          const finalData = Array.from(uniquePoolsMap.values());
+
+          // Mettre à jour avec les pools combinés
+          setPools(finalData);
+          setLastUpdated(new Date());
+        }).catch(err => {
+          console.error('❌ Erreur lors du chargement des pools personnalisés:', err);
+          // Les pools DefiLlama sont déjà affichés, donc pas grave si custom pools échouent
+        });
       } else {
-        // ====== 🎭 MODE DEMO (données mock) ======
-        console.log('🎭 Mode démo - utilisation des données fictives');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        data = MOCK_POOLS.map(pool => ({
-          ...pool,
-          apy: pool.apy * (1 + (Math.random() - 0.5) * 0.02),
-          tvl: pool.tvl * (1 + (Math.random() - 0.5) * 0.01),
-          lastUpdated: new Date(),
-        }));
+        // Mode mock data - comportement d'origine
+        data = [];
+        setPools(data);
+        setLastUpdated(new Date());
+        setIsLoading(false);
       }
-      
-      setPools(data);
-      setLastUpdated(new Date());
     } catch (err) {
       console.error('❌ Erreur:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
-      
-      // Fallback vers données mock en cas d'erreur API
-      if (USE_REAL_API && pools.length === 0) {
-        console.log('⚠️ Fallback vers données de démonstration');
-        setPools(MOCK_POOLS);
-      }
-    } finally {
       setIsLoading(false);
+
+      if (pools.length === 0) {
+        console.error('⚠️ Aucune donnée disponible');
+      }
     }
   }, []);
 
