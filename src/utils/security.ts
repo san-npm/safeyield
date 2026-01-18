@@ -127,6 +127,11 @@ export function getSecurityDescription(factors: SecurityFactors): string[] {
  * Formate un nombre en format lisible
  */
 export function formatNumber(num: number): string {
+  // Gestion des valeurs invalides
+  if (num === undefined || num === null || isNaN(num)) {
+    return '$0.00';
+  }
+
   if (num >= 1_000_000_000) {
     return `$${(num / 1_000_000_000).toFixed(2)}B`;
   }
@@ -143,6 +148,10 @@ export function formatNumber(num: number): string {
  * Formate un pourcentage
  */
 export function formatPercent(num: number): string {
+  // Gestion des valeurs invalides
+  if (num === undefined || num === null || isNaN(num)) {
+    return '0.00%';
+  }
   return `${num.toFixed(2)}%`;
 }
 

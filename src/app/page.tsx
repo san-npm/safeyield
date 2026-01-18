@@ -1,213 +1,13 @@
 'use client';
 
-import { useMemo, useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { 
-  Footer, 
-  TopPools, 
-  PoolsTable, 
-  Filters, 
-  Stats 
-} from '@/components';
+import { useMemo, useState } from 'react';
+import { Footer, TopPools, PoolsTable, Filters, Stats } from '@/components';
 import { usePools, useStats } from '@/hooks/usePools';
 import { Shield, TrendingUp, Clock, CheckCircle, RefreshCw, Menu, X, Globe } from 'lucide-react';
+import { useI18n, I18nProvider, locales, localeFlags, localeNames, Locale } from '@/utils/i18n';
 
 // ============================================
-// SYSTÈME I18N INTÉGRÉ
-// ============================================
-
-type Locale = 'en' | 'fr' | 'it' | 'es' | 'de';
-
-const translations = {
-  en: {
-    'hero.title1': 'Find the best',
-    'hero.title2': 'yields',
-    'hero.title3': 'with complete',
-    'hero.title4': 'security',
-    'hero.subtitle': 'Compare stablecoin yields from top DeFi protocols. Our security score helps you make the best choices.',
-    'nav.topYields': 'Top Yields',
-    'nav.allPools': 'All Pools',
-    'nav.security': 'Security',
-    'nav.faq': 'FAQ',
-    'security.title': 'How does our security score work?',
-    'security.subtitle': 'A score from 0 to 100 based on 4 objective criteria',
-    'security.auditsTitle': 'Security audits',
-    'security.auditsDesc': 'Number of audits by recognized firms',
-    'security.ageTitle': 'Age',
-    'security.ageDesc': 'Protocol age. Older = more battle-tested.',
-    'security.tvlTitle': 'Liquidity (TVL)',
-    'security.tvlDesc': 'Total value locked indicates market confidence.',
-    'security.historyTitle': 'History',
-    'security.historyDesc': 'No past exploits reduces risk.',
-    'security.recommendation': 'Our recommendation',
-    'security.recommendationText': 'We recommend pools with score above 80 for safer investment.',
-    'common.updated': 'Updated',
-    'common.realtime': 'Real-time',
-    'common.audited': 'Audited',
-  },
-  fr: {
-    'hero.title1': 'Trouvez les meilleurs',
-    'hero.title2': 'rendements',
-    'hero.title3': 'en toute',
-    'hero.title4': 'sécurité',
-    'hero.subtitle': 'Comparez les yields stablecoins des principaux protocoles DeFi. Notre score de sécurité vous aide à faire les meilleurs choix.',
-    'nav.topYields': 'Top Yields',
-    'nav.allPools': 'Tous les pools',
-    'nav.security': 'Sécurité',
-    'nav.faq': 'FAQ',
-    'security.title': 'Comment fonctionne notre score de sécurité ?',
-    'security.subtitle': 'Un score de 0 à 100 basé sur 4 critères objectifs',
-    'security.auditsTitle': 'Audits de sécurité',
-    'security.auditsDesc': "Nombre d'audits par des firmes reconnues",
-    'security.ageTitle': 'Ancienneté',
-    'security.ageDesc': "Plus le protocole est ancien, plus il a fait ses preuves.",
-    'security.tvlTitle': 'Liquidité (TVL)',
-    'security.tvlDesc': 'Montant total déposé indique la confiance du marché.',
-    'security.historyTitle': 'Historique',
-    'security.historyDesc': "Absence d'exploits réduit le risque.",
-    'security.recommendation': 'Notre recommandation',
-    'security.recommendationText': 'Nous recommandons les pools avec un score supérieur à 80.',
-    'common.updated': 'MAJ',
-    'common.realtime': 'Temps réel',
-    'common.audited': 'Audités',
-  },
-  it: {
-    'hero.title1': 'Trova i migliori',
-    'hero.title2': 'rendimenti',
-    'hero.title3': 'in completa',
-    'hero.title4': 'sicurezza',
-    'hero.subtitle': 'Confronta i rendimenti stablecoin dei principali protocolli DeFi.',
-    'nav.topYields': 'Top Rendimenti',
-    'nav.allPools': 'Tutti i Pool',
-    'nav.security': 'Sicurezza',
-    'nav.faq': 'FAQ',
-    'security.title': 'Come funziona il nostro punteggio?',
-    'security.subtitle': 'Un punteggio da 0 a 100 basato su 4 criteri',
-    'security.auditsTitle': 'Audit di sicurezza',
-    'security.auditsDesc': 'Numero di audit da aziende riconosciute',
-    'security.ageTitle': 'Età',
-    'security.ageDesc': 'Più è vecchio, più è testato.',
-    'security.tvlTitle': 'Liquidità (TVL)',
-    'security.tvlDesc': 'Valore totale indica fiducia del mercato.',
-    'security.historyTitle': 'Storico',
-    'security.historyDesc': 'Assenza di exploit riduce il rischio.',
-    'security.recommendation': 'La nostra raccomandazione',
-    'security.recommendationText': 'Raccomandiamo pool con punteggio sopra 80.',
-    'common.updated': 'Agg.',
-    'common.realtime': 'Tempo reale',
-    'common.audited': 'Verificati',
-  },
-  es: {
-    'hero.title1': 'Encuentra los mejores',
-    'hero.title2': 'rendimientos',
-    'hero.title3': 'con total',
-    'hero.title4': 'seguridad',
-    'hero.subtitle': 'Compara los yields de stablecoins de los principales protocolos DeFi.',
-    'nav.topYields': 'Top Rendimientos',
-    'nav.allPools': 'Todos los Pools',
-    'nav.security': 'Seguridad',
-    'nav.faq': 'FAQ',
-    'security.title': '¿Cómo funciona nuestra puntuación?',
-    'security.subtitle': 'Una puntuación de 0 a 100 basada en 4 criterios',
-    'security.auditsTitle': 'Auditorías',
-    'security.auditsDesc': 'Número de auditorías por firmas reconocidas',
-    'security.ageTitle': 'Antigüedad',
-    'security.ageDesc': 'Más antiguo = más probado.',
-    'security.tvlTitle': 'Liquidez (TVL)',
-    'security.tvlDesc': 'Valor total indica confianza del mercado.',
-    'security.historyTitle': 'Historial',
-    'security.historyDesc': 'Sin exploits reduce el riesgo.',
-    'security.recommendation': 'Nuestra recomendación',
-    'security.recommendationText': 'Recomendamos pools con puntuación sobre 80.',
-    'common.updated': 'Act.',
-    'common.realtime': 'Tiempo real',
-    'common.audited': 'Auditados',
-  },
-  de: {
-    'hero.title1': 'Finden Sie die besten',
-    'hero.title2': 'Renditen',
-    'hero.title3': 'mit voller',
-    'hero.title4': 'Sicherheit',
-    'hero.subtitle': 'Vergleichen Sie Stablecoin-Renditen der führenden DeFi-Protokolle.',
-    'nav.topYields': 'Top Renditen',
-    'nav.allPools': 'Alle Pools',
-    'nav.security': 'Sicherheit',
-    'nav.faq': 'FAQ',
-    'security.title': 'Wie funktioniert unser Score?',
-    'security.subtitle': 'Ein Score von 0 bis 100 basierend auf 4 Kriterien',
-    'security.auditsTitle': 'Sicherheits-Audits',
-    'security.auditsDesc': 'Anzahl der Audits durch anerkannte Firmen',
-    'security.ageTitle': 'Alter',
-    'security.ageDesc': 'Älter = mehr getestet.',
-    'security.tvlTitle': 'Liquidität (TVL)',
-    'security.tvlDesc': 'Gesamtwert zeigt Marktvertrauen.',
-    'security.historyTitle': 'Historie',
-    'security.historyDesc': 'Keine Exploits reduziert das Risiko.',
-    'security.recommendation': 'Unsere Empfehlung',
-    'security.recommendationText': 'Wir empfehlen Pools mit Score über 80.',
-    'common.updated': 'Akt.',
-    'common.realtime': 'Echtzeit',
-    'common.audited': 'Geprüft',
-  },
-} as const;
-
-const localeFlags: Record<Locale, string> = {
-  en: '🇬🇧', fr: '🇫🇷', it: '🇮🇹', es: '🇪🇸', de: '🇩🇪',
-};
-
-const localeNames: Record<Locale, string> = {
-  en: 'English', fr: 'Français', it: 'Italiano', es: 'Español', de: 'Deutsch',
-};
-
-const locales: Locale[] = ['en', 'fr', 'it', 'es', 'de'];
-
-// Contexte i18n
-interface I18nContextType {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  t: (key: keyof typeof translations.en) => string;
-}
-
-const I18nContext = createContext<I18nContextType | null>(null);
-
-function useI18n() {
-  const context = useContext(I18nContext);
-  if (!context) throw new Error('useI18n must be used within I18nProvider');
-  return context;
-}
-
-function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('yiield-locale') as Locale | null;
-    const browserLang = navigator.language.split('-')[0].toLowerCase() as Locale;
-    const initial = saved && locales.includes(saved) ? saved : 
-                    locales.includes(browserLang) ? browserLang : 'en';
-    setLocaleState(initial);
-    setMounted(true);
-  }, []);
-
-  const setLocale = (newLocale: Locale) => {
-    setLocaleState(newLocale);
-    localStorage.setItem('yiield-locale', newLocale);
-  };
-
-  const t = (key: keyof typeof translations.en): string => {
-    return translations[locale]?.[key] || translations.en[key] || key;
-  };
-
-  if (!mounted) return null;
-
-  return (
-    <I18nContext.Provider value={{ locale, setLocale, t }}>
-      {children}
-    </I18nContext.Provider>
-  );
-}
-
-// ============================================
-// LOGO YIIELD - ALIGNEMENT AMÉLIORÉ
+// LOGO YIIELD
 // ============================================
 
 function YiieldLogo() {
@@ -264,10 +64,10 @@ function LanguageSelector() {
 }
 
 // ============================================
-// HEADER AVEC I18N
+// HEADER
 // ============================================
 
-function HeaderWithI18n({ lastUpdated, onRefresh, isLoading }: { lastUpdated: Date | null; onRefresh: () => void; isLoading: boolean }) {
+function Header({ lastUpdated, onRefresh, isLoading }: { lastUpdated: Date | null; onRefresh: () => void; isLoading: boolean }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { t } = useI18n();
 
@@ -330,7 +130,7 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <HeaderWithI18n lastUpdated={lastUpdated} onRefresh={refresh} isLoading={isLoading} />
+      <Header lastUpdated={lastUpdated} onRefresh={refresh} isLoading={isLoading} />
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -363,10 +163,18 @@ function HomeContent() {
             </div>
           )}
 
+          {/* Info Box - Mise à jour des données */}
+          <div className="mb-8 flex justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20">
+              <Clock className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-white/70">{t('info.dataUpdateText')}</span>
+            </div>
+          </div>
+
           <Stats {...stats} />
-          <section id="top-pools"><TopPools pools={topPools} /></section>
-          <Filters filters={filters} onFilterChange={setFilters} availableChains={availableChains} />
-          <section id="all-pools"><PoolsTable pools={filteredPools} isLoading={isLoading} /></section>
+          <section id="top-pools"><TopPools pools={topPools} locale={locale} /></section>
+          <Filters filters={filters} onFilterChange={setFilters} availableChains={availableChains} locale={locale} />
+          <section id="all-pools"><PoolsTable pools={filteredPools} isLoading={isLoading} locale={locale} /></section>
 
           {/* Security Section */}
           <section id="security" className="mt-16">
@@ -416,7 +224,6 @@ function HomeContent() {
         </div>
       </main>
 
-      {/* Footer avec locale */}
       <Footer locale={locale} />
     </div>
   );

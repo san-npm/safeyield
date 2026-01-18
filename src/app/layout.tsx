@@ -111,22 +111,15 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png' },
     ],
-    shortcut: '/favicon.ico',
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
   
-  // Verification search engines (à remplir)
+  // Verification search engines
   verification: {
-    google: 'your-google-verification-code',
-    yandex: 'your-yandex-verification-code',
+    google: 'G-YYPH87DSSG',
   },
   
   // Alternates multilingues (hreflang)
@@ -275,6 +268,54 @@ const faqSchema = {
         text: 'Les meilleurs rendements stablecoin dépendent du protocole et des conditions de marché. Aave, Compound, Morpho et Spark offrent généralement entre 3-15% APY. Yiield compare tous les protocoles avec des scores de sécurité pour vous aider à investir en toute sécurité.',
       },
     },
+    {
+      '@type': 'Question',
+      name: 'Welche Stablecoins bieten die höchsten Renditen?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Die Renditen variieren je nach Stablecoin und Protokoll. Wichtige USD-Stablecoins (USDC, USDT, DAI) bieten typischerweise 3-10% APY auf etablierten Protokollen. Euro-Stablecoins (EURe, EURC) können unterschiedliche Zinssätze bieten. Überprüfen Sie immer den Sicherheitsscore vor einer Investition.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Ist DeFi Yield Farming sicher?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'DeFi Yield Farming birgt Risiken wie Smart-Contract-Schwachstellen, Oracle-Fehler und Marktvolatilität. Yiield bietet Sicherheitsscores (0-100) basierend auf Audits, Protokollalter, TVL und Exploit-Historie. Wir empfehlen Protokolle mit Scores über 70 für sicherere Investitionen.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Cuáles son los mejores rendimientos de stablecoins en DeFi?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Los mejores rendimientos de stablecoins varían según el protocolo y las condiciones del mercado. Los principales protocolos como Aave, Compound, Morpho y Spark suelen ofrecer tasas competitivas entre 3-15% APY. Yiield compara todos los protocolos principales con puntuaciones de seguridad para ayudarte a encontrar oportunidades seguras.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '¿Es seguro el yield farming en DeFi?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'El yield farming en DeFi conlleva riesgos como vulnerabilidades de contratos inteligentes, fallos de oráculos y volatilidad del mercado. Yiield proporciona puntuaciones de seguridad (0-100) basadas en auditorías, antigüedad del protocolo, TVL e historial de exploits. Recomendamos protocolos con puntuaciones superiores a 70 para inversiones más seguras.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Quali sono i migliori rendimenti di stablecoin in DeFi?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'I migliori rendimenti di stablecoin variano in base al protocollo e alle condizioni di mercato. I principali protocolli come Aave, Compound, Morpho e Spark offrono tipicamente tassi competitivi tra il 3-15% APY. Yiield confronta tutti i principali protocolli con punteggi di sicurezza per aiutarti a trovare opportunità sicure.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Il yield farming DeFi è sicuro?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Il yield farming DeFi comporta rischi tra cui vulnerabilità degli smart contract, errori degli oracle e volatilità del mercato. Yiield fornisce punteggi di sicurezza (0-100) basati su audit, età del protocollo, TVL e cronologia degli exploit. Consigliamo protocolli con punteggi superiori a 70 per investimenti più sicuri.',
+      },
+    },
   ],
 };
 
@@ -319,13 +360,39 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        {/* Google Analytics GA4 */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-YYPH87DSSG" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-YYPH87DSSG');
+            `,
+          }}
+        />
+        {/* End Google Analytics */}
+
+        {/* Google Tag Manager */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PNMXQNBR');`,
+          }}
+        />
+        {/* End Google Tag Manager */}
+
         {/* Preconnect pour performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://yields.llama.fi" />
         <link rel="preconnect" href="https://assets.coingecko.com" />
         <link rel="preconnect" href="https://icons.llama.fi" />
-        
+
         {/* DNS Prefetch */}
         <link rel="dns-prefetch" href="https://yields.llama.fi" />
         <link rel="dns-prefetch" href="https://assets.coingecko.com" />
@@ -353,6 +420,17 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-dark-950 text-white antialiased">
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-PNMXQNBR"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
+        {/* End Google Tag Manager (noscript) */}
+
         {/* Grain overlay for texture */}
         <div className="grain-overlay" />
         

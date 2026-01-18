@@ -1,172 +1,160 @@
 'use client';
 
 import { ExternalLink } from 'lucide-react';
+import { Locale } from '@/utils/i18n';
 
-type Locale = 'en' | 'fr' | 'it' | 'es' | 'de';
+const footerTranslations = {
+  en: {
+    description: 'The secure DeFi yield comparison platform. Find the best stablecoin yields with our security scoring system.',
+    product: 'Product',
+    topYields: 'Top Yields',
+    allPools: 'All Pools',
+    security: 'Security',
+    faq: 'FAQ',
+    resources: 'Resources',
+    disclaimer: 'Disclaimer',
+    terms: 'Terms of Use',
+    privacy: 'Privacy Policy',
+    dataSource: 'Data: DefiLlama',
+    rights: 'All rights reserved.',
+    hostedOn: 'Hosted on',
+  },
+  fr: {
+    description: 'La plateforme de comparaison de rendements DeFi sécurisée. Trouvez les meilleurs yields stablecoins grâce à notre système de notation de sécurité.',
+    product: 'Produit',
+    topYields: 'Top Yields',
+    allPools: 'Tous les pools',
+    security: 'Sécurité',
+    faq: 'FAQ',
+    resources: 'Ressources',
+    disclaimer: 'Avertissement',
+    terms: "Conditions d'utilisation",
+    privacy: 'Politique de confidentialité',
+    dataSource: 'Données : DefiLlama',
+    rights: 'Tous droits réservés.',
+    hostedOn: 'Hébergé sur',
+  },
+  it: {
+    description: 'La piattaforma sicura di confronto rendimenti DeFi. Trova i migliori yield stablecoin con il nostro sistema di punteggio sicurezza.',
+    product: 'Prodotto',
+    topYields: 'Top Rendimenti',
+    allPools: 'Tutti i Pool',
+    security: 'Sicurezza',
+    faq: 'FAQ',
+    resources: 'Risorse',
+    disclaimer: 'Disclaimer',
+    terms: 'Termini di utilizzo',
+    privacy: 'Privacy Policy',
+    dataSource: 'Dati: DefiLlama',
+    rights: 'Tutti i diritti riservati.',
+    hostedOn: 'Ospitato su',
+  },
+  es: {
+    description: 'La plataforma segura de comparación de rendimientos DeFi. Encuentra los mejores yields de stablecoins con nuestro sistema de puntuación de seguridad.',
+    product: 'Producto',
+    topYields: 'Top Rendimientos',
+    allPools: 'Todos los Pools',
+    security: 'Seguridad',
+    faq: 'FAQ',
+    resources: 'Recursos',
+    disclaimer: 'Aviso legal',
+    terms: 'Términos de uso',
+    privacy: 'Política de privacidad',
+    dataSource: 'Datos: DefiLlama',
+    rights: 'Todos los derechos reservados.',
+    hostedOn: 'Alojado en',
+  },
+  de: {
+    description: 'Die sichere DeFi-Rendite-Vergleichsplattform. Finden Sie die besten Stablecoin-Renditen mit unserem Sicherheits-Bewertungssystem.',
+    product: 'Produkt',
+    topYields: 'Top Renditen',
+    allPools: 'Alle Pools',
+    security: 'Sicherheit',
+    faq: 'FAQ',
+    resources: 'Ressourcen',
+    disclaimer: 'Haftungsausschluss',
+    terms: 'Nutzungsbedingungen',
+    privacy: 'Datenschutz',
+    dataSource: 'Daten: DefiLlama',
+    rights: 'Alle Rechte vorbehalten.',
+    hostedOn: 'Gehostet auf',
+  },
+};
+
+function YiieldLogo() {
+  return (
+    <div className="flex items-center h-8">
+      <span className="text-2xl font-bold text-white leading-none">y</span>
+      <div className="flex items-end gap-[3px] h-[22px] mx-[2px] mb-[1px]">
+        <div className="w-[5px] h-[13px] bg-red-500 rounded-[2px]" />
+        <div className="w-[5px] h-[19px] bg-safe-400 rounded-[2px]" />
+      </div>
+      <span className="text-2xl font-bold text-white leading-none">eld</span>
+    </div>
+  );
+}
 
 interface FooterProps {
   locale?: Locale;
 }
 
-// Traductions du Footer
-const footerTranslations = {
-  en: {
-    description: 'Find the best stablecoin yields safely. Our security score helps you make informed decisions.',
-    resources: 'Resources',
-    securityScore: 'Security Score',
-    legal: 'Legal',
-    terms: 'Terms of Use',
-    privacy: 'Privacy Policy',
-    disclaimer: 'Risk Disclaimer',
-    disclaimerText: 'Yields shown are for informational purposes only and may vary. DeFi investments carry risks. Do your own research before investing. Yiield is not financial advice.',
-    rights: 'All rights reserved.',
-  },
-  fr: {
-    description: 'Trouvez les meilleurs rendements stablecoins en toute sécurité. Notre score de sécurité vous aide à décider.',
-    resources: 'Ressources',
-    securityScore: 'Score de sécurité',
-    legal: 'Légal',
-    terms: "Conditions d'utilisation",
-    privacy: 'Politique de confidentialité',
-    disclaimer: 'Avertissement',
-    disclaimerText: "Les rendements affichés sont informatifs et peuvent varier. Les investissements DeFi comportent des risques. Faites vos propres recherches avant d'investir. Yiield n'est pas un conseil financier.",
-    rights: 'Tous droits réservés.',
-  },
-  it: {
-    description: 'Trova i migliori rendimenti stablecoin in sicurezza. Il nostro punteggio ti aiuta a decidere.',
-    resources: 'Risorse',
-    securityScore: 'Punteggio sicurezza',
-    legal: 'Legale',
-    terms: 'Termini di utilizzo',
-    privacy: 'Privacy Policy',
-    disclaimer: 'Avviso',
-    disclaimerText: 'I rendimenti mostrati sono solo informativi e possono variare. Gli investimenti DeFi comportano rischi. Fai le tue ricerche prima di investire. Yiield non è consulenza finanziaria.',
-    rights: 'Tutti i diritti riservati.',
-  },
-  es: {
-    description: 'Encuentra los mejores rendimientos stablecoin de forma segura. Nuestra puntuación te ayuda a decidir.',
-    resources: 'Recursos',
-    securityScore: 'Puntuación seguridad',
-    legal: 'Legal',
-    terms: 'Términos de uso',
-    privacy: 'Política de privacidad',
-    disclaimer: 'Aviso',
-    disclaimerText: 'Los rendimientos mostrados son solo informativos y pueden variar. Las inversiones DeFi conllevan riesgos. Haz tu propia investigación antes de invertir. Yiield no es asesoramiento financiero.',
-    rights: 'Todos los derechos reservados.',
-  },
-  de: {
-    description: 'Finden Sie die besten Stablecoin-Renditen sicher. Unser Score hilft Ihnen bei der Entscheidung.',
-    resources: 'Ressourcen',
-    securityScore: 'Sicherheits-Score',
-    legal: 'Rechtliches',
-    terms: 'Nutzungsbedingungen',
-    privacy: 'Datenschutz',
-    disclaimer: 'Hinweis',
-    disclaimerText: 'Die angezeigten Renditen dienen nur zu Informationszwecken und können variieren. DeFi-Investitionen bergen Risiken. Recherchieren Sie selbst vor dem Investieren. Yiield ist keine Finanzberatung.',
-    rights: 'Alle Rechte vorbehalten.',
-  },
-};
-
-// Logo Yiield - alignement amélioré
-function YiieldLogo() {
-  return (
-    <div className="flex items-center h-6">
-      <span className="text-xl font-bold text-white leading-none">y</span>
-      <div className="flex items-end gap-[2px] h-[18px] mx-[1px] mb-[1px]">
-        <div className="w-[4px] h-[11px] bg-red-500 rounded-[2px]" />
-        <div className="w-[4px] h-[16px] bg-safe-400 rounded-[2px]" />
-      </div>
-      <span className="text-xl font-bold text-white leading-none">eld</span>
-    </div>
-  );
-}
-
 export function Footer({ locale = 'en' }: FooterProps) {
-  const t = footerTranslations[locale] || footerTranslations.en;
+  const t = footerTranslations[locale];
+  const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="mt-20 border-t border-white/5 bg-dark-950/50">
+    <footer className="border-t border-white/5 bg-dark-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-4">
-              <YiieldLogo />
-            </div>
-            <p className="text-sm text-white/50 max-w-sm leading-relaxed">
-              {t.description}
-            </p>
+          <div className="col-span-1 md:col-span-2">
+            <YiieldLogo />
+            <p className="mt-4 text-white/50 text-sm max-w-md">{t.description}</p>
+          </div>
+
+          {/* Product */}
+          <div>
+            <h4 className="font-semibold text-white mb-4">{t.product}</h4>
+            <ul className="space-y-2">
+              <li><a href="#top-pools" className="text-white/50 hover:text-white text-sm transition-colors">{t.topYields}</a></li>
+              <li><a href="#all-pools" className="text-white/50 hover:text-white text-sm transition-colors">{t.allPools}</a></li>
+              <li><a href="#security" className="text-white/50 hover:text-white text-sm transition-colors">{t.security}</a></li>
+              <li><a href="/faq" className="text-white/50 hover:text-white text-sm transition-colors">{t.faq}</a></li>
+            </ul>
           </div>
 
           {/* Resources */}
           <div>
-            <h3 className="font-semibold text-white mb-4">{t.resources}</h3>
-            <ul className="space-y-3">
+            <h4 className="font-semibold text-white mb-4">{t.resources}</h4>
+            <ul className="space-y-2">
+              <li><a href="/disclaimer" className="text-white/50 hover:text-white text-sm transition-colors">{t.disclaimer}</a></li>
+              <li><a href="/terms" className="text-white/50 hover:text-white text-sm transition-colors">{t.terms}</a></li>
+              <li><a href="/privacy" className="text-white/50 hover:text-white text-sm transition-colors">{t.privacy}</a></li>
               <li>
-                <a
-                  href="https://defillama.com/yields"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-white/50 hover:text-white transition-colors flex items-center gap-1.5"
-                >
-                  DefiLlama
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#security"
-                  className="text-sm text-white/50 hover:text-white transition-colors"
-                >
-                  {t.securityScore}
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/faq"
-                  className="text-sm text-white/50 hover:text-white transition-colors"
-                >
-                  FAQ
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">{t.legal}</h3>
-            <ul className="space-y-3">
-              <li>
-                <a href="/terms" className="text-sm text-white/50 hover:text-white transition-colors">
-                  {t.terms}
-                </a>
-              </li>
-              <li>
-                <a href="/privacy" className="text-sm text-white/50 hover:text-white transition-colors">
-                  {t.privacy}
-                </a>
-              </li>
-              <li>
-                <a href="/disclaimer" className="text-sm text-white/50 hover:text-white transition-colors">
-                  {t.disclaimer}
+                <a href="https://defillama.com" target="_blank" rel="noopener noreferrer" className="text-white/50 hover:text-white text-sm transition-colors inline-flex items-center gap-1">
+                  {t.dataSource}<ExternalLink className="w-3 h-3" />
                 </a>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Disclaimer */}
-        <div className="mt-12 p-5 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
-          <p className="text-xs text-yellow-500/70 text-center leading-relaxed">
-            ⚠️ <strong>{t.disclaimer}:</strong> {t.disclaimerText}
-          </p>
-        </div>
-
-        {/* Bottom bar */}
-        <div className="mt-8 pt-6 border-t border-white/5">
-          <p className="text-xs text-white/30 text-center">
-            © COMMIT MEDIA 2026. {t.rights}
-          </p>
+        {/* Bottom */}
+        <div className="mt-12 pt-8 border-t border-white/5">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-white/40 text-sm">© {currentYear} COMMIT MEDIA. {t.rights}</p>
+            <div className="flex items-center gap-1.5 text-white/30 text-xs">
+              <span>{t.hostedOn}</span>
+              <a 
+                href="https://aleph.cloud" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-white/40 hover:text-white/60 transition-colors"
+              >
+                Aleph Cloud
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </footer>
