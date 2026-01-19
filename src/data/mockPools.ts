@@ -1,4 +1,5 @@
 import { YieldPool, StablecoinType, ApyHistoryPoint, ProtocolType, FilterState } from '@/types';
+import { enrichPoolWithYiieldScore } from '@/utils/yiieldScore';
 
 // Fonction pour générer un historique APY réaliste
 function generateApyHistory(baseApy: number, volatility: number = 0.1): ApyHistoryPoint[] {
@@ -45,13 +46,23 @@ function createPool(
   const stablecoinLogos: Record<StablecoinType, string> = {
     'USDC': 'https://assets.coingecko.com/coins/images/6319/small/usdc.png',
     'USDT': 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
-    'USDT0': 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
     'DAI': 'https://assets.coingecko.com/coins/images/9956/small/dai-multi-collateral-mcd.png',
     'USDS': 'https://assets.coingecko.com/coins/images/39926/small/usds.webp',
     'PYUSD': 'https://assets.coingecko.com/coins/images/31212/small/PYUSD_Logo_%282%29.png',
+    'USDe': 'https://assets.coingecko.com/coins/images/33613/small/ethena.png',
+    'USD1': 'https://assets.coingecko.com/coins/images/32772/small/usd1.png',
+    'USDG': 'https://assets.coingecko.com/coins/images/14417/small/usdg.png',
     'EURe': 'https://assets.coingecko.com/coins/images/23354/small/eure.png',
     'EURC': 'https://assets.coingecko.com/coins/images/26045/small/euro-coin.png',
+    'XAUT': 'https://assets.coingecko.com/coins/images/10481/small/xaut.png',
+    'PAXG': 'https://assets.coingecko.com/coins/images/9519/small/paxg.png',
   };
+
+  // Determine currency based on stablecoin
+  const currency: 'USD' | 'EUR' | 'GOLD' =
+    stablecoin === 'EURe' || stablecoin === 'EURC' ? 'EUR' :
+    stablecoin === 'XAUT' || stablecoin === 'PAXG' ? 'GOLD' :
+    'USD';
 
   return {
     id,
@@ -63,6 +74,7 @@ function createPool(
     symbol: stablecoin,
     stablecoin,
     stablecoinLogo: stablecoinLogos[stablecoin],
+    currency,
     apy,
     apyBase,
     apyReward,
@@ -79,8 +91,8 @@ function createPool(
   };
 }
 
-// Données de démonstration
-export const MOCK_POOLS: YieldPool[] = [
+// Données de démonstration (without Yiield Score)
+const BASE_POOLS: YieldPool[] = [
   // Lending protocols
   createPool('aave-v3-usdc-eth', 'Aave V3', 'lending', 'Ethereum', 'USDC', 5.82, 4.12, 1.70, 2_340_000_000, 95, 5, 1020, 0, 'https://app.aave.com/'),
   createPool('aave-v3-usdt-arb', 'Aave V3', 'lending', 'Arbitrum', 'USDT', 5.45, 4.50, 0.95, 890_000_000, 95, 5, 1020, 0, 'https://app.aave.com/'),
@@ -113,6 +125,9 @@ export const MOCK_POOLS: YieldPool[] = [
   createPool('veda-usdc-eth', 'Veda', 'vault', 'Ethereum', 'USDC', 8.20, 8.20, 0, 80_000_000, 75, 2, 200, 0, 'https://www.veda.tech/'),
   createPool('mellow-usdc-eth', 'Mellow', 'vault', 'Ethereum', 'USDC', 7.80, 7.80, 0, 120_000_000, 76, 2, 250, 0, 'https://app.mellow.finance/'),
 ];
+
+// Enrich pools with Yiield Scores
+export const MOCK_POOLS: YieldPool[] = BASE_POOLS.map(enrichPoolWithYiieldScore);
 
 // Fonctions de filtrage
 export function filterPools(pools: YieldPool[], filters: FilterState): YieldPool[] {

@@ -18,7 +18,8 @@ export interface YieldPool {
   tvl: number;
   tvlChange24h: number;
   // Données de sécurité
-  securityScore: number; // 0-100
+  securityScore: number; // 0-100 (base DefiLlama score)
+  yiieldScore?: number; // 0-100 (enhanced Yiield Score with bonuses)
   audits: number;
   protocolAge: number; // en jours
   exploits?: number; // nombre d'exploits (0, 1, 2+)
