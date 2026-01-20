@@ -18,6 +18,38 @@ let poolsCache: { data: YieldPool[] | null; timestamp: number } = {
 };
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes de cache
 
+// LocalStorage cache for instant loading on revisit
+const LS_CACHE_KEY = 'yiield_pools_cache';
+const LS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+function getLocalStorageCache(): YieldPool[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(LS_CACHE_KEY);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp < LS_CACHE_TTL) {
+      return data;
+    }
+    localStorage.removeItem(LS_CACHE_KEY);
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+  return null;
+}
+
+function setLocalStorageCache(data: YieldPool[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now(),
+    }));
+  } catch (e) {
+    // Ignore localStorage errors (quota exceeded, etc.)
+  }
+}
+
 interface UsePoolsReturn {
   pools: YieldPool[];
   topPools: YieldPool[];
@@ -587,7 +619,12 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
   if (poolsCache.data && (now - poolsCache.timestamp) < CACHE_TTL) {
     return poolsCache.data;
   }
-  const response = await fetch('https://yields.llama.fi/pools');
+  const response = await fetch('https://yields.llama.fi/pools', {
+    cache: 'default',
+    headers: {
+      'Accept': 'application/json',
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Erreur API DefiLlama: ${response.status}`);
@@ -815,7 +852,14 @@ export function usePools(): UsePoolsReturn {
 
   const fetchPools = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // Check localStorage cache first for instant display
+      const cached = getLocalStorageCache();
+      if (cached && cached.length > 0) {
+        setPools(cached);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
 
       let data: YieldPool[];
@@ -829,6 +873,7 @@ export function usePools(): UsePoolsReturn {
         setPools(data);
         setLastUpdated(new Date());
         setIsLoading(false);
+        setLocalStorageCache(data);
 
         // Charger les pools personnalisés en arrière-plan (non-bloquant)
         fetchAllCustomPools().then(customPools => {
@@ -895,6 +940,7 @@ export function usePools(): UsePoolsReturn {
           // Mettre à jour avec les pools combinés
           setPools(finalData);
           setLastUpdated(new Date());
+          setLocalStorageCache(finalData);
         }).catch(err => {
           console.error('❌ Erreur lors du chargement des pools personnalisés:', err);
           // Les pools DefiLlama sont déjà affichés, donc pas grave si custom pools échouent
