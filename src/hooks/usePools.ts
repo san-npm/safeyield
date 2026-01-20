@@ -8,7 +8,7 @@ const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 heure (aligné sur DefiLlama)
 // 🎛️ CONFIGURATION
 // ============================================
 const USE_REAL_API = true;
-const MIN_SECURITY_SCORE = 65; // Abaissé de 70 à 65 pour inclure plus de pools de qualité
+const MIN_SECURITY_SCORE = 60; // Minimum threshold for security score
 const TOP_POOLS_MIN_SCORE = 80; // Score minimum pour être dans le top 3
 
 // Cache pour optimiser les performances
@@ -97,7 +97,7 @@ export const STABLECOIN_LOGOS: Record<StablecoinType, string> = {
   'DAI': 'https://assets.coingecko.com/coins/images/9956/small/dai-multi-collateral-mcd.png',
   'PYUSD': 'https://assets.coingecko.com/coins/images/31212/small/PYUSD_Logo_%282%29.png',
   'USDe': '/logos/usde.svg',
-  'USDS': '/logos/usds.svg',
+  'USDS': '/logos/usds-logo.svg',
   'USD1': '/logos/usd1.png',
   'USDG': '/logos/GDN_USDG_Token.svg',
   'EURe': '/logos/eure.svg',
@@ -225,7 +225,16 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2023,
     exploits: 0,
     earnUrl: 'https://app.spark.fi/',
-    logo: 'https://icons.llama.fi/spark.png',
+    logo: '/logos/spark-logo.svg',
+  },
+  'sparklend': {
+    type: 'lending',
+    name: 'SparkLend',
+    audits: 3,
+    launchYear: 2023,
+    exploits: 0,
+    earnUrl: 'https://app.spark.fi/',
+    logo: '/logos/spark-logo.svg',
   },
   'fluid': {
     type: 'lending',
@@ -306,7 +315,16 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2024, // Rebranding de MakerDAO (2017) en 2024
     exploits: 0,
     earnUrl: 'https://info.sky.money/savings',
-    logo: '/logos/sky.svg',
+    logo: '/logos/sky-logo.svg',
+  },
+  'sky': {
+    type: 'lending',
+    name: 'Sky',
+    audits: 5,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://info.sky.money/savings',
+    logo: '/logos/sky-logo.svg',
   },
   'benqi-lending': {
     type: 'lending',
@@ -396,7 +414,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     launchYear: 2024,
     exploits: 0,
     earnUrl: 'https://cap.app/',
-    logo: 'https://icons.llama.fi/cap.png',
+    logo: '/logos/cap-logo.svg',
   },
   'dolomite': {
     type: 'lending',
@@ -406,6 +424,33 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     exploits: 0,
     earnUrl: 'https://app.dolomite.io/',
     logo: '/logos/dolomite.png',
+  },
+  'lista-dao': {
+    type: 'lending',
+    name: 'Lista DAO',
+    audits: 3,
+    launchYear: 2023,
+    exploits: 0,
+    earnUrl: 'https://lista.org/',
+    logo: '/logos/lista-logo.svg',
+  },
+  'lista': {
+    type: 'lending',
+    name: 'Lista DAO',
+    audits: 3,
+    launchYear: 2023,
+    exploits: 0,
+    earnUrl: 'https://lista.org/',
+    logo: '/logos/lista-logo.svg',
+  },
+  'lista-lending': {
+    type: 'lending',
+    name: 'Lista DAO',
+    audits: 3,
+    launchYear: 2023,
+    exploits: 0,
+    earnUrl: 'https://lista.org/',
+    logo: '/logos/lista-logo.svg',
   },
 
   // ========== VAULT MANAGERS ==========
@@ -499,7 +544,16 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     earnUrl: 'https://smokehouse.finance/',
     logo: 'https://icons.llama.fi/smokehouse.png',
   },
-  
+  'upshift': {
+    type: 'vault',
+    name: 'Upshift',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://upshift.finance/',
+    logo: '/logos/Upshift-logo.svg',
+  },
+
   // ========== EXCLUS (exploit majeur non remboursé) ==========
   'euler-v1': {
     type: 'lending',
@@ -603,6 +657,32 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
   return filteredPools;
 }
 
+// Known vault curators/managers for Morpho and other vault protocols
+const VAULT_CURATORS: Record<string, string> = {
+  'steakhouse': 'Steakhouse',
+  'gauntlet': 'Gauntlet',
+  're7': 'Re7 Labs',
+  'b.protocol': 'B.Protocol',
+  'flagship': 'Flagship',
+  'usual': 'Usual',
+  'spark': 'Spark',
+  'ionic': 'Ionic',
+  'moonwell': 'Moonwell',
+  'mev capital': 'MEV Capital',
+  'block analitica': 'Block Analitica',
+  'smokehouse': 'Smokehouse',
+};
+
+function extractCurator(poolMeta: string | null, symbol: string): string | undefined {
+  const searchStr = (poolMeta || symbol || '').toLowerCase();
+  for (const [key, curator] of Object.entries(VAULT_CURATORS)) {
+    if (searchStr.includes(key)) {
+      return curator;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Transforme un pool DefiLlama brut en format YieldPool
  */
@@ -610,25 +690,29 @@ function transformPool(pool: any): YieldPool {
   const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || 'USDC';
   const stablecoin = detectStablecoin(symbol, pool.project);
   const protocol = ALLOWED_PROTOCOLS[pool.project];
-  
+
   if (!protocol) {
     throw new Error(`Protocole non trouvé: ${pool.project}`);
   }
-  
+
   const protocolAge = (new Date().getFullYear() - protocol.launchYear) * 365;
-  
+
   // Calcul du score de sécurité (0-100)
   const auditScore = Math.min(25, protocol.audits * 6);
   const ageScore = protocolAge > 730 ? 25 : protocolAge > 365 ? 20 : protocolAge > 180 ? 12 : 5;
   const tvlScore = pool.tvlUsd > 500_000_000 ? 25 : pool.tvlUsd > 100_000_000 ? 22 : pool.tvlUsd > 10_000_000 ? 18 : pool.tvlUsd > 1_000_000 ? 14 : 10;
   const exploitScore = protocol.exploits === 0 ? 25 : protocol.exploits === 1 ? 12 : 0;
   const securityScore = auditScore + ageScore + tvlScore + exploitScore;
-  
+
+  // Extract curator for vault protocols (Morpho, etc.)
+  const curator = extractCurator(pool.poolMeta, pool.symbol);
+
   return {
     id: pool.pool,
     protocol: protocol.name,
     protocolLogo: protocol.logo,
     protocolType: protocol.type,
+    curator: curator,
     chain: pool.chain,
     chainLogo: CHAIN_LOGOS[pool.chain] || '',
     symbol: pool.symbol,
@@ -789,20 +873,21 @@ export function usePools(): UsePoolsReturn {
           }).filter(pool => pool !== null) as YieldPool[];
 
           // Combiner avec les pools DefiLlama déjà affichés
+          // Custom pools come last and will override DefiLlama pools with same key
           const combinedPools = [...data, ...completeCustomPools];
 
-          // Déduplication: garder seulement les pools uniques basés sur protocol + chain + stablecoin
+          // Déduplication: custom API pools (at the end) override DefiLlama pools
+          // This ensures we get accurate TVL from protocol APIs (Aave, Venus, etc.)
           const uniquePoolsMap = new Map<string, YieldPool>();
 
           for (const pool of combinedPools) {
-            // Créer une clé unique basée sur protocole, chaîne et stablecoin
-            const key = `${pool.protocol}-${pool.chain}-${pool.stablecoin}`.toLowerCase();
+            // Créer une clé unique - inclure curator pour garder les vaults avec différents curators
+            const curatorKey = pool.curator ? `-${pool.curator}` : '';
+            const key = `${pool.protocol}-${pool.chain}-${pool.stablecoin}${curatorKey}`.toLowerCase();
 
-            // Si le pool n'existe pas encore, ou si le nouveau pool a un meilleur APY, on le garde
-            const existing = uniquePoolsMap.get(key);
-            if (!existing || pool.apy > existing.apy) {
-              uniquePoolsMap.set(key, pool);
-            }
+            // Always prefer the later pool (custom API pools override DefiLlama)
+            // This ensures accurate TVL from protocol APIs
+            uniquePoolsMap.set(key, pool);
           }
 
           const finalData = Array.from(uniquePoolsMap.values());

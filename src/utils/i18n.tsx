@@ -481,8 +481,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return translations[locale]?.[key] || translations.en[key] || key;
   };
 
-  if (!mounted) return null;
-
+  // Always render children - use current locale state (defaults to 'en')
   return (
     <I18nContext.Provider value={{ locale, setLocale, t }}>
       {children}

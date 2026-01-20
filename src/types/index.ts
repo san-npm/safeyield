@@ -6,6 +6,7 @@ export interface YieldPool {
   protocol: string;
   protocolLogo: string;
   protocolType?: ProtocolType;
+  curator?: string; // Vault curator/manager name (e.g., Steakhouse, Gauntlet, Re7)
   chain: string;
   chainLogo: string;
   symbol: string; // ex: USDC, USDT, DAI

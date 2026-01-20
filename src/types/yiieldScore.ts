@@ -187,11 +187,11 @@ export function calculateYiieldScore(
 export function getTeamBadgeEmoji(status: TeamVerificationStatus): string {
   switch (status) {
     case 'doxxed':
-      return '✓';
+      return '👤';
     case 'verified':
-      return '⬡';
+      return '✓';
     case 'anonymous':
-      return 'Ø';
+      return '👻';
   }
 }
 

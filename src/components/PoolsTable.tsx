@@ -243,6 +243,9 @@ const PoolRow = memo(function PoolRow({ pool, isExpanded, onToggleExpand, locale
                   </span>
                 )}
               </div>
+              {pool.curator && (
+                <div className="text-xs text-safe-400 font-medium">{pool.curator}</div>
+              )}
               <button onClick={onToggleExpand} className="text-xs text-white/40 hover:text-safe-400 flex items-center gap-1 transition-colors">
                 <Info className="w-3 h-3" />{isExpanded ? t['table.lessInfo'] : t['table.moreInfo']}
               </button>
@@ -273,7 +276,14 @@ const PoolRow = memo(function PoolRow({ pool, isExpanded, onToggleExpand, locale
         <td className="px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: securityColor }} />
-            <SecurityBadge score={pool.securityScore} />
+            <SecurityBadge
+              score={pool.securityScore}
+              audits={pool.audits}
+              protocolAge={pool.protocolAge}
+              exploits={pool.exploits}
+              tvl={pool.tvl}
+              protocol={pool.protocol}
+            />
             {exploitCount >= 2 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">⚠ {exploitCount} exploits</span>}
             {exploitCount === 1 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 font-medium">1 exploit</span>}
           </div>

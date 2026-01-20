@@ -227,6 +227,32 @@ export async function fetchMellowPools(): Promise<Partial<YieldPool>[]> {
 // 3. MORPHO / STEAKHOUSE (Ethereum)
 // ============================================
 
+// Known Morpho vault curators/managers
+const MORPHO_CURATORS: Record<string, string> = {
+  'steakhouse': 'Steakhouse',
+  'gauntlet': 'Gauntlet',
+  're7': 'Re7 Labs',
+  'b.protocol': 'B.Protocol',
+  'flagship': 'Flagship',
+  'usual': 'Usual',
+  'spark': 'Spark',
+  'ionic': 'Ionic',
+  'moonwell': 'Moonwell',
+  'mev capital': 'MEV Capital',
+  'block analitica': 'Block Analitica',
+  'smokehouse': 'Smokehouse',
+};
+
+function extractCurator(vaultName: string): string | undefined {
+  const lowerName = vaultName.toLowerCase();
+  for (const [key, curator] of Object.entries(MORPHO_CURATORS)) {
+    if (lowerName.includes(key)) {
+      return curator;
+    }
+  }
+  return undefined;
+}
+
 export async function fetchSteakhousePools(): Promise<Partial<YieldPool>[]> {
   try {
     const query = `
@@ -267,12 +293,11 @@ export async function fetchSteakhousePools(): Promise<Partial<YieldPool>[]> {
     const pools: Partial<YieldPool>[] = [];
 
     if (data?.vaultV2s?.items) {
-      // Filtrer les vaults Steakhouse avec stablecoins supportés
-      const supportedStablecoins = ['USDC', 'USDT', 'DAI', 'PYUSD'];
+      // Filtrer les vaults avec stablecoins supportés
+      const supportedStablecoins = ['USDC', 'USDT', 'DAI', 'PYUSD', 'USDS', 'USDe'];
 
       for (const vault of data.vaultV2s.items) {
-        // Vérifier si c'est un vault Steakhouse
-        if (vault.name?.includes('Steakhouse') && vault.asset?.symbol) {
+        if (vault.asset?.symbol) {
           const assetSymbol = vault.asset.symbol.toUpperCase();
 
           // Vérifier si c'est un stablecoin supporté
@@ -289,9 +314,13 @@ export async function fetchSteakhousePools(): Promise<Partial<YieldPool>[]> {
               'arbitrum': 'Arbitrum',
             };
 
+            // Extract curator from vault name
+            const curator = extractCurator(vault.name || '');
+
             pools.push({
-              id: `steakhouse-${vault.address.toLowerCase()}`,
-              protocol: 'Steakhouse',
+              id: `morpho-${vault.address.toLowerCase()}`,
+              protocol: 'Morpho',
+              curator: curator,
               chain: chainMap[chain.toLowerCase()] || chain,
               symbol: assetSymbol,
               stablecoin: assetSymbol as any,
@@ -912,6 +941,100 @@ export async function fetchVenusPools(): Promise<Partial<YieldPool>[]> {
 }
 
 // ============================================
+// CAP MONEY - Ethereum
+// ============================================
+
+interface CapVault {
+  id: string;
+  name: string;
+  tokenId: string;
+  networkId: number;
+  status: string;
+  type: string;
+}
+
+interface CapLenderMetrics {
+  depositApy: number;
+  totalDeposits: number;
+  totalDepositsUsd: number;
+}
+
+export async function fetchCapPools(): Promise<Partial<YieldPool>[]> {
+  try {
+    const pools: Partial<YieldPool>[] = [];
+
+    // Network mapping
+    const networkMap: Record<number, string> = {
+      1: 'Ethereum',
+    };
+
+    // Supported networks
+    const networks = [1]; // Ethereum mainnet
+
+    // Stablecoins supported by Cap (currently only USDC)
+    const stablecoins = ['USDC'];
+
+    for (const networkId of networks) {
+      for (const tokenSymbol of stablecoins) {
+        try {
+          // Cap API uses token symbols directly
+          const metricsResponse = await fetch(
+            `https://api.cap.app/v1/lender/${networkId}/metrics/${tokenSymbol}`
+          );
+
+          if (!metricsResponse.ok) {
+            continue; // Skip if no metrics for this token
+          }
+
+          const metrics = await metricsResponse.json();
+
+          // Parse TVL from suppliedUSD (string format)
+          const tvl = parseFloat(metrics.suppliedUSD || '0');
+
+          // Skip if no TVL
+          if (tvl < 100000) {
+            continue;
+          }
+
+          // APY from Cap is the interestRate field (decimal format: 0.0468 = 4.68%)
+          const apy = parseFloat(metrics.interestRate || '0') * 100;
+
+          // Skip very low APY
+          if (apy < 0.1) {
+            continue;
+          }
+
+          const chainName = networkMap[networkId] || 'Ethereum';
+
+          pools.push({
+            id: `cap-${tokenSymbol.toLowerCase()}-${chainName.toLowerCase()}`,
+            protocol: 'Cap Money',
+            chain: chainName as any,
+            symbol: tokenSymbol,
+            stablecoin: tokenSymbol as any,
+            apy: apy,
+            apyBase: apy,
+            apyReward: 0,
+            tvl: tvl,
+            poolUrl: `https://cap.app/asset/${networkId}/${tokenSymbol}`,
+          });
+
+          console.log(`✅ Cap Money ${tokenSymbol}: APY ${apy.toFixed(2)}%, TVL $${(tvl/1e6).toFixed(2)}M`);
+        } catch (tokenError) {
+          // Silent fail for individual tokens
+          continue;
+        }
+      }
+    }
+
+    return pools;
+  } catch (error) {
+    console.error('❌ Erreur Cap Money API:', error);
+    return [];
+  }
+}
+
+// ============================================
 // FONCTION PRINCIPALE : Récupérer tous les pools personnalisés
 // ============================================
 
@@ -923,10 +1046,11 @@ export async function fetchAllCustomPools(): Promise<Partial<YieldPool>[]> {
     fetchSteakhousePools(),
     fetchFluidPools(),
     fetchJupiterPools(),
-    // fetchAavePools(), // Désactivé - utilise DefiLlama qui a plus de données
+    fetchVenusPools(), // Utilise l'API Venus pour avoir USD1 et vraies TVL
+    fetchCapPools(), // Cap Money - Ethereum stablecoin yields
+    fetchAavePools(), // Aave V3 GraphQL API for accurate TVL
     // fetchConcretePools(), // Désactivé - erreurs CORS
     // fetchSiloPools(), // Désactivé - erreurs CORS
-    fetchVenusPools(), // Utilise l'API Venus pour avoir USD1 et vraies TVL
     // fetchMellowPools(), // Désactivé - pas de vaults stablecoins
     // fetchRealTokenPools(), // Désactivé - nécessite clé API The Graph
   ]);
@@ -934,7 +1058,7 @@ export async function fetchAllCustomPools(): Promise<Partial<YieldPool>[]> {
   const allPools: Partial<YieldPool>[] = [];
 
   results.forEach((result, index) => {
-    const protocolNames = ['Kamino', 'Steakhouse', 'Fluid', 'Jupiter Lend', 'Venus'];
+    const protocolNames = ['Kamino', 'Steakhouse', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3'];
 
     if (result.status === 'fulfilled') {
       allPools.push(...result.value);

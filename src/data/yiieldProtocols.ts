@@ -116,11 +116,32 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
 
   // === MAKER/SKY ECOSYSTEM ===
 
-  'spark': {
-    name: 'Spark',
-    slug: 'spark',
+  'sky': {
+    name: 'Sky',
+    slug: 'sky',
     teamStatus: 'doxxed',
-    teamDescription: 'Part of MakerDAO/Sky ecosystem',
+    teamDescription: 'Rebranded from MakerDAO, led by Rune Christensen',
+    auditors: [
+      { name: 'ChainSecurity', tier: 1 },
+      { name: 'Trail of Bits', tier: 1 },
+      { name: 'OpenZeppelin', tier: 1 },
+    ],
+    insurance: {
+      provider: 'Nexus Mutual',
+      coverage: 30_000_000,
+    },
+    governance: {
+      hasGovernance: true,
+      governanceType: 'dao',
+      description: 'SKY token governance (formerly MKR)',
+    },
+  },
+
+  'sparklend': {
+    name: 'SparkLend',
+    slug: 'sparklend',
+    teamStatus: 'doxxed',
+    teamDescription: 'Part of Sky ecosystem (formerly MakerDAO)',
     auditors: [
       { name: 'ChainSecurity', tier: 1 },
       { name: 'OpenZeppelin', tier: 1 },
@@ -128,7 +149,39 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     governance: {
       hasGovernance: true,
       governanceType: 'dao',
-      description: 'Governed by MakerDAO',
+      description: 'Governed by Sky DAO',
+    },
+  },
+
+  'spark-savings': {
+    name: 'Spark Savings',
+    slug: 'spark-savings',
+    teamStatus: 'doxxed',
+    teamDescription: 'Part of Sky ecosystem (formerly MakerDAO)',
+    auditors: [
+      { name: 'ChainSecurity', tier: 1 },
+      { name: 'OpenZeppelin', tier: 1 },
+    ],
+    governance: {
+      hasGovernance: true,
+      governanceType: 'dao',
+      description: 'Governed by Sky DAO',
+    },
+  },
+
+  'spark': {
+    name: 'SparkLend',
+    slug: 'spark',
+    teamStatus: 'doxxed',
+    teamDescription: 'Part of Sky ecosystem (formerly MakerDAO)',
+    auditors: [
+      { name: 'ChainSecurity', tier: 1 },
+      { name: 'OpenZeppelin', tier: 1 },
+    ],
+    governance: {
+      hasGovernance: true,
+      governanceType: 'dao',
+      description: 'Governed by Sky DAO',
     },
   },
 
@@ -200,6 +253,57 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     governance: {
       hasGovernance: true,
       governanceType: 'dao',
+    },
+  },
+
+  'lista-lending': {
+    name: 'Lista DAO',
+    slug: 'lista-lending',
+    teamStatus: 'doxxed',
+    teamDescription: 'Founded by Terry, public team',
+    auditors: [
+      { name: 'PeckShield', tier: 2 },
+      { name: 'SlowMist', tier: 2 },
+      { name: 'Certik', tier: 2 },
+    ],
+    governance: {
+      hasGovernance: true,
+      governanceType: 'dao',
+      description: 'LISTA token governance',
+    },
+  },
+
+  'lista-dao': {
+    name: 'Lista DAO',
+    slug: 'lista-dao',
+    teamStatus: 'doxxed',
+    teamDescription: 'Founded by Terry, public team',
+    auditors: [
+      { name: 'PeckShield', tier: 2 },
+      { name: 'SlowMist', tier: 2 },
+      { name: 'Certik', tier: 2 },
+    ],
+    governance: {
+      hasGovernance: true,
+      governanceType: 'dao',
+      description: 'LISTA token governance',
+    },
+  },
+
+  'lista': {
+    name: 'Lista DAO',
+    slug: 'lista',
+    teamStatus: 'doxxed',
+    teamDescription: 'Founded by Terry, public team',
+    auditors: [
+      { name: 'PeckShield', tier: 2 },
+      { name: 'SlowMist', tier: 2 },
+      { name: 'Certik', tier: 2 },
+    ],
+    governance: {
+      hasGovernance: true,
+      governanceType: 'dao',
+      description: 'LISTA token governance',
     },
   },
 
@@ -294,7 +398,6 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     governance: {
       hasGovernance: false,
     },
-    notes: '⬡ Verified by Yiield',
   },
 
   'wildcat': {
@@ -308,7 +411,6 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     governance: {
       hasGovernance: false,
     },
-    notes: '⬡ Verified by Yiield',
   },
 
   // === VAULT MANAGERS ===
@@ -388,7 +490,19 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     governance: {
       hasGovernance: false,
     },
-    notes: '⬡ Verified by Yiield',
+  },
+
+  'cap': {
+    name: 'Cap Money',
+    slug: 'cap',
+    teamStatus: 'verified',
+    teamDescription: 'Verified by Yiield team',
+    auditors: [
+      { name: 'Sherlock', tier: 3 },
+    ],
+    governance: {
+      hasGovernance: false,
+    },
   },
 
   'dolomite': {
@@ -414,13 +528,71 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
       hasGovernance: false,
     },
   },
+
+  'upshift': {
+    name: 'Upshift',
+    slug: 'upshift',
+    teamStatus: 'doxxed',
+    teamDescription: 'Founded by experienced DeFi builders',
+    auditors: [
+      { name: 'Halborn', tier: 2 },
+      { name: 'Certik', tier: 2 },
+    ],
+    governance: {
+      hasGovernance: false,
+    },
+  },
+};
+
+// Protocol name aliases for matching
+const PROTOCOL_ALIASES: Record<string, string> = {
+  'aave v3': 'aave-v3',
+  'aave v2': 'aave-v2',
+  'compound v3': 'compound-v3',
+  'morpho blue': 'morpho-blue',
+  'morpho': 'morpho',
+  'euler v2': 'euler-v2',
+  'silo v2': 'silo-v2',
+  'jupiter lend': 'jupiter-lend',
+  'cap money': 'cap',
+  'lista dao': 'lista-dao',
+  'radiant v2': 'radiant-v2',
+  'spark savings': 'spark-savings',
+  'kamino': 'kamino',
+  'fluid': 'fluid',
+  'venus': 'venus',
+  'benqi': 'benqi',
+  'marginfi': 'marginfi',
+  'drift': 'drift',
+  'solend': 'solend',
+  'maple': 'maple',
+  'lagoon': 'lagoon',
+  'wildcat': 'wildcat',
+  'steakhouse': 'steakhouse',
+  'concrete': 'concrete',
+  'veda': 'veda',
+  'mellow': 'mellow',
+  'upshift': 'upshift',
+  'dolomite': 'dolomite',
+  'ajna': 'ajna',
+  'sky': 'sky',
+  'sparklend': 'sparklend',
 };
 
 // Helper function to get protocol info by name (case-insensitive, handles variations)
 export function getProtocolInfo(protocolName: string): YiieldProtocolInfo | undefined {
   const normalized = protocolName.toLowerCase().replace(/\s+/g, '-');
+  const normalizedWithSpaces = protocolName.toLowerCase();
 
-  // Direct match
+  // Check alias first
+  if (PROTOCOL_ALIASES[normalizedWithSpaces]) {
+    const aliasKey = PROTOCOL_ALIASES[normalizedWithSpaces];
+    if (YIIELD_PROTOCOLS[aliasKey]) {
+      return YIIELD_PROTOCOLS[aliasKey];
+    }
+  }
+
+  // Direct match with dashes
   if (YIIELD_PROTOCOLS[normalized]) {
     return YIIELD_PROTOCOLS[normalized];
   }

@@ -1,168 +1,214 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { YieldPool } from '@/types';
 import { getPoolScoreBreakdown } from '@/utils/yiieldScore';
 import { getProtocolInfo } from '@/data/yiieldProtocols';
-import { getTeamBadgeLabel } from '@/types/yiieldScore';
+import { TeamVerificationStatus } from '@/types/yiieldScore';
+import { getRatingColor, getSecurityRating } from '@/utils/security';
 
 interface YiieldScoreTooltipProps {
   pool: YieldPool;
   children: React.ReactNode;
 }
 
+// Team badge component with distinct styling for each verification level
+function TeamBadge({ status }: { status: TeamVerificationStatus }) {
+  const config = {
+    doxxed: {
+      label: 'Public Team',
+      description: 'Fully doxxed & publicly known',
+      bg: 'bg-green-500/20',
+      border: 'border-green-500/40',
+      text: 'text-green-400',
+      icon: '👤',
+    },
+    verified: {
+      label: 'Yiield Verified',
+      description: 'Personally verified by Yiield',
+      bg: 'bg-purple-500/20',
+      border: 'border-purple-500/40',
+      text: 'text-purple-400',
+      icon: '✓',
+    },
+    anonymous: {
+      label: 'Anonymous',
+      description: 'Team identity unknown',
+      bg: 'bg-gray-500/20',
+      border: 'border-gray-500/40',
+      text: 'text-gray-400',
+      icon: '👻',
+    },
+  }[status];
+
+  return (
+    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${config.bg} border ${config.border}`}>
+      <span className="text-base">{config.icon}</span>
+      <div>
+        <div className={`text-xs font-semibold ${config.text}`}>{config.label}</div>
+        <div className="text-[10px] text-white/50">{config.description}</div>
+      </div>
+    </div>
+  );
+}
+
+// Visual score breakdown bar
+function ScoreBreakdownBar({
+  baseScore,
+  bonuses,
+  total
+}: {
+  baseScore: number;
+  bonuses: { label: string; value: number; color: string }[];
+  total: number;
+}) {
+  const maxScore = 100;
+  const baseWidth = (baseScore / maxScore) * 100;
+
+  return (
+    <div className="space-y-2">
+      {/* Score bar */}
+      <div className="h-3 bg-white/10 rounded-full overflow-hidden flex">
+        {/* Base score segment */}
+        <div
+          className="h-full bg-white/30 transition-all"
+          style={{ width: `${baseWidth}%` }}
+        />
+        {/* Bonus segments */}
+        {bonuses.map((bonus, i) => (
+          <div
+            key={i}
+            className="h-full transition-all"
+            style={{
+              width: `${(bonus.value / maxScore) * 100}%`,
+              backgroundColor: bonus.color,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-white/30" />
+          <span className="text-white/50">Base {baseScore}</span>
+        </div>
+        {bonuses.map((bonus, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: bonus.color }} />
+            <span className="text-white/50">{bonus.label} +{bonus.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function YiieldScoreTooltip({ pool, children }: YiieldScoreTooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
   const protocolInfo = getProtocolInfo(pool.protocol);
   const scoreBreakdown = getPoolScoreBreakdown(pool);
+  const yiieldScore = pool.yiieldScore || pool.securityScore;
+  const rating = getSecurityRating(yiieldScore);
+  const ratingColor = getRatingColor(rating);
 
-  if (!protocolInfo) {
-    return <>{children}</>;
+  // Build bonuses array for the bar
+  const bonuses: { label: string; value: number; color: string }[] = [];
+  if (scoreBreakdown.auditorTierBonus > 0) {
+    bonuses.push({ label: 'Audits', value: scoreBreakdown.auditorTierBonus, color: '#22c55e' });
   }
+  if (scoreBreakdown.teamVerificationBonus > 0) {
+    bonuses.push({ label: 'Team', value: scoreBreakdown.teamVerificationBonus, color: '#a855f7' });
+  }
+  if (scoreBreakdown.insuranceBonus > 0) {
+    bonuses.push({ label: 'Insurance', value: scoreBreakdown.insuranceBonus, color: '#3b82f6' });
+  }
+  if (scoreBreakdown.governanceBonus > 0) {
+    bonuses.push({ label: 'Gov', value: scoreBreakdown.governanceBonus, color: '#f59e0b' });
+  }
+
+  const hasBonus = bonuses.length > 0;
+
+  // Calculate position when opening
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const tooltipWidth = 256; // w-64 = 16rem = 256px
+
+      // Position tooltip to the left of the trigger, aligned with bottom
+      let left = rect.right - tooltipWidth;
+      const top = rect.bottom + 8;
+
+      // Ensure tooltip doesn't go off the left edge
+      if (left < 16) {
+        left = 16;
+      }
+
+      setPosition({ top, left });
+    }
+  }, [isOpen]);
 
   return (
     <div
-      className="relative inline-block"
+      ref={triggerRef}
+      className="inline-block"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
       {children}
 
-      {isOpen && (
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="absolute z-50 w-80 p-4 rounded-lg shadow-2xl"
+          className="fixed z-[9999] w-64 p-4 rounded-xl shadow-2xl pointer-events-none"
           style={{
             background: 'linear-gradient(135deg, rgba(30, 30, 46, 0.98) 0%, rgba(20, 20, 32, 0.98) 100%)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             backdropFilter: 'blur(20px)',
-            top: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            marginTop: '8px',
+            top: position.top,
+            left: position.left,
           }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3 pb-3 border-b border-white/10">
-            <h3 className="font-bold text-white">Yiield Score Breakdown</h3>
-            <span className="text-2xl font-bold text-purple-400">
-              {Math.round(scoreBreakdown.total)}
-            </span>
+          {/* Main Score Display - THE ANSWER */}
+          <div className="text-center mb-4">
+            <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Yiield Score</div>
+            <div
+              className="text-4xl font-bold"
+              style={{ color: ratingColor }}
+            >
+              {Math.round(yiieldScore)}
+            </div>
+            <div
+              className="text-xs font-medium mt-1"
+              style={{ color: ratingColor }}
+            >
+              {rating === 'excellent' && 'Excellent'}
+              {rating === 'good' && 'Good'}
+              {rating === 'moderate' && 'Moderate'}
+              {rating === 'risky' && 'Risky'}
+              {rating === 'danger' && 'High Risk'}
+            </div>
           </div>
 
-          {/* Base Score */}
-          <div className="space-y-2 mb-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/70">Base Security Score</span>
-              <span className="font-semibold text-white">{scoreBreakdown.baseScore}</span>
-            </div>
-            <div className="text-xs text-white/50 pl-2">
-              ↳ Based on audits, age, TVL, exploits
-            </div>
-          </div>
-
-          {/* Bonuses */}
-          {scoreBreakdown.rawTotal > scoreBreakdown.baseScore && (
-            <div className="space-y-2 mb-3 pb-3 border-b border-white/10">
-              <div className="text-xs font-semibold text-purple-300 mb-2">BONUSES</div>
-
-              {scoreBreakdown.auditorTierBonus > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">Audit Quality</span>
-                    <span className="font-semibold text-green-400">
-                      +{scoreBreakdown.auditorTierBonus}
-                    </span>
-                  </div>
-                  <div className="text-xs text-white/50 pl-2">
-                    {protocolInfo.auditors.map(a => a.name).join(', ')}
-                  </div>
-                </div>
-              )}
-
-              {scoreBreakdown.teamVerificationBonus > 0 && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">Team Verification</span>
-                    <span className="font-semibold text-green-400">
-                      +{scoreBreakdown.teamVerificationBonus}
-                    </span>
-                  </div>
-                  <div className="text-xs text-white/50 pl-2">
-                    {getTeamBadgeLabel(protocolInfo.teamStatus)}
-                    {protocolInfo.teamDescription && ` - ${protocolInfo.teamDescription}`}
-                  </div>
-                </div>
-              )}
-
-              {scoreBreakdown.insuranceBonus > 0 && protocolInfo.insurance && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">Insurance Coverage</span>
-                    <span className="font-semibold text-green-400">
-                      +{scoreBreakdown.insuranceBonus}
-                    </span>
-                  </div>
-                  <div className="text-xs text-white/50 pl-2">
-                    {protocolInfo.insurance.provider} - $
-                    {(protocolInfo.insurance.coverage / 1_000_000).toFixed(1)}M
-                  </div>
-                </div>
-              )}
-
-              {scoreBreakdown.governanceBonus > 0 && protocolInfo.governance && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">Governance</span>
-                    <span className="font-semibold text-green-400">
-                      +{scoreBreakdown.governanceBonus}
-                    </span>
-                  </div>
-                  <div className="text-xs text-white/50 pl-2">
-                    {protocolInfo.governance.governanceType?.toUpperCase() || 'Decentralized'}
-                  </div>
-                </div>
-              )}
+          {/* Visual Breakdown Bar - THE WHY */}
+          {hasBonus && (
+            <div className="mb-4 pb-4 border-b border-white/10">
+              <ScoreBreakdownBar
+                baseScore={scoreBreakdown.baseScore}
+                bonuses={bonuses}
+                total={Math.round(yiieldScore)}
+              />
             </div>
           )}
 
-          {/* Total */}
-          <div className="flex items-center justify-between text-sm font-bold pt-2">
-            <span className="text-white">Total Yiield Score</span>
-            <div className="flex items-center gap-2">
-              <span className="text-white/50 line-through text-xs">
-                {scoreBreakdown.rawTotal}
-              </span>
-              <span
-                className="text-lg px-2 py-1 rounded"
-                style={{
-                  background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                }}
-              >
-                {Math.round(scoreBreakdown.total)}
-              </span>
-            </div>
-          </div>
-
-          {protocolInfo.notes && (
-            <div className="mt-3 pt-3 border-t border-white/10 text-xs text-purple-300">
-              {protocolInfo.notes}
-            </div>
+          {/* Team Verification Badge */}
+          {protocolInfo && (
+            <TeamBadge status={protocolInfo.teamStatus} />
           )}
-
-          {/* Arrow */}
-          <div
-            className="absolute w-3 h-3 rotate-45"
-            style={{
-              background: 'rgba(30, 30, 46, 0.98)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRight: 'none',
-              borderBottom: 'none',
-              top: '-6px',
-              left: '50%',
-              transform: 'translateX(-50%) rotate(45deg)',
-            }}
-          />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

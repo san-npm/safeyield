@@ -34,7 +34,6 @@ export default function TestYiieldScore() {
                 pool={aavePool}
                 size="lg"
                 showLabel={true}
-                showBreakdown={true}
               />
               <ScoreDetails pool={aavePool} />
             </div>
@@ -49,7 +48,6 @@ export default function TestYiieldScore() {
                 pool={morphoPool}
                 size="lg"
                 showLabel={true}
-                showBreakdown={true}
               />
               <ScoreDetails pool={morphoPool} />
             </div>
@@ -90,7 +88,6 @@ export default function TestYiieldScore() {
               pool={lagoonPool}
               size="lg"
               showLabel={true}
-              showBreakdown={true}
             />
             <ScoreDetails pool={lagoonPool} />
             <div style={{
