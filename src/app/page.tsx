@@ -81,6 +81,7 @@ function Header({ lastUpdated, onRefresh, isLoading }: { lastUpdated: Date | nul
             <a href="#top-pools" className="text-sm text-white/60 hover:text-white transition-colors">{t('nav.topYields')}</a>
             <a href="#all-pools" className="text-sm text-white/60 hover:text-white transition-colors">{t('nav.allPools')}</a>
             <a href="#security" className="text-sm text-white/60 hover:text-white transition-colors">{t('nav.security')}</a>
+            <a href="/analytics" className="text-sm text-white/60 hover:text-white transition-colors">Analytics</a>
             <a href="/faq" className="text-sm text-white/60 hover:text-white transition-colors">{t('nav.faq')}</a>
           </nav>
 
@@ -109,6 +110,7 @@ function Header({ lastUpdated, onRefresh, isLoading }: { lastUpdated: Date | nul
             <a href="#top-pools" className="block px-4 py-2 rounded-lg text-white/70 hover:bg-white/5" onClick={() => setIsMobileMenuOpen(false)}>{t('nav.topYields')}</a>
             <a href="#all-pools" className="block px-4 py-2 rounded-lg text-white/70 hover:bg-white/5" onClick={() => setIsMobileMenuOpen(false)}>{t('nav.allPools')}</a>
             <a href="#security" className="block px-4 py-2 rounded-lg text-white/70 hover:bg-white/5" onClick={() => setIsMobileMenuOpen(false)}>{t('nav.security')}</a>
+            <a href="/analytics" className="block px-4 py-2 rounded-lg text-white/70 hover:bg-white/5" onClick={() => setIsMobileMenuOpen(false)}>Analytics</a>
             <a href="/faq" className="block px-4 py-2 rounded-lg text-white/70 hover:bg-white/5" onClick={() => setIsMobileMenuOpen(false)}>{t('nav.faq')}</a>
           </nav>
         </div>
