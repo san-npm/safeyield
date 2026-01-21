@@ -3,6 +3,7 @@ export type ProtocolType = 'lending' | 'vault';
 
 export interface YieldPool {
   id: string;
+  projectSlug?: string; // Protocol slug for history lookup (e.g., "aave-v3")
   protocol: string;
   protocolLogo: string;
   protocolType?: ProtocolType;

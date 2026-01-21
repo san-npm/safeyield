@@ -217,10 +217,15 @@ const PoolRow = memo(function PoolRow({ pool, isExpanded, onToggleExpand, locale
   // Vérifier si ce pool a des incentives externes
   const externalIncentive = hasExternalIncentives(pool.protocol, pool.stablecoin);
 
-  // Générer les données de sparkline (en production, utiliser pool.apyHistory)
+  // Générer les données de sparkline (utilise pool.apyHistory si disponible)
   const sparklineData = useMemo(() => {
-    if (pool.apyHistory && pool.apyHistory.length > 1) {
-      return pool.apyHistory.map(p => p.apy);
+    if (pool.apyHistory && pool.apyHistory.length >= 1) {
+      const history = pool.apyHistory.map(p => p.apy);
+      // If only 1 point, show flat line at current APY
+      if (history.length === 1) {
+        return [history[0], history[0], pool.apy];
+      }
+      return history;
     }
     return generateSparklineData(pool.apy);
   }, [pool.apy, pool.apyHistory]);

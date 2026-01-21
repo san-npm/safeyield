@@ -48,6 +48,15 @@ interface PoolHistoryData {
 }
 
 /**
+ * Generate a history ID matching the collector format
+ * Format: {project}-{stablecoin}-{chain} all lowercase
+ */
+function generateHistoryId(project: string, stablecoin: string, chain: string): string {
+  const chainSlug = chain.toLowerCase().replace(/\s+/g, '-');
+  return `${project}-${stablecoin.toLowerCase()}-${chainSlug}`;
+}
+
+/**
  * Fetch the history index from Aleph/IPFS
  */
 async function fetchHistoryIndex(): Promise<HistoryIndex | null> {
@@ -93,10 +102,17 @@ async function fetchPoolHistory(poolId: string): Promise<{ timestamp: Date; apy:
   }
 }
 
+interface PoolHistoryLookup {
+  id: string;           // Original pool ID (DefiLlama UUID)
+  project: string;      // Protocol slug (e.g., "aave-v3")
+  stablecoin: string;   // Stablecoin type (e.g., "USDC")
+  chain: string;        // Chain name (e.g., "Ethereum")
+}
+
 /**
  * Fetch history for multiple pools in parallel (batch)
  */
-async function fetchPoolsHistory(poolIds: string[]): Promise<Map<string, { timestamp: Date; apy: number }[]>> {
+async function fetchPoolsHistory(pools: PoolHistoryLookup[]): Promise<Map<string, { timestamp: Date; apy: number }[]>> {
   const historyMap = new Map<string, { timestamp: Date; apy: number }[]>();
 
   if (!HISTORY_INDEX_HASH) return historyMap;
@@ -106,27 +122,29 @@ async function fetchPoolsHistory(poolIds: string[]): Promise<Map<string, { times
 
   // Fetch histories in parallel (limit concurrency to avoid overwhelming the server)
   const BATCH_SIZE = 10;
-  for (let i = 0; i < poolIds.length; i += BATCH_SIZE) {
-    const batch = poolIds.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < pools.length; i += BATCH_SIZE) {
+    const batch = pools.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(
-      batch.map(async (poolId) => {
-        const poolInfo = index.pools[poolId];
-        if (!poolInfo?.hash) return { poolId, history: [] };
+      batch.map(async (pool) => {
+        // Generate the history ID matching collector format
+        const historyId = generateHistoryId(pool.project, pool.stablecoin, pool.chain);
+        const poolInfo = index.pools[historyId];
+        if (!poolInfo?.hash) return { poolId: pool.id, history: [] };
 
         try {
           const response = await fetch(`${ALEPH_STORAGE_URL}${poolInfo.hash}`);
-          if (!response.ok) return { poolId, history: [] };
+          if (!response.ok) return { poolId: pool.id, history: [] };
 
           const data: PoolHistoryData = await response.json();
           return {
-            poolId,
+            poolId: pool.id,
             history: data.hourly.map(p => ({
               timestamp: new Date(p.t),
               apy: p.apy,
             })),
           };
         } catch {
-          return { poolId, history: [] };
+          return { poolId: pool.id, history: [] };
         }
       })
     );
@@ -865,6 +883,7 @@ function transformPool(pool: any): YieldPool {
 
   return {
     id: pool.pool,
+    projectSlug: pool.project,
     protocol: protocol.name,
     protocolLogo: protocol.logo,
     protocolType: protocol.type,
@@ -1019,6 +1038,7 @@ export function usePools(): UsePoolsReturn {
 
             return {
               ...pool,
+              projectSlug: protocolKey,
               protocolLogo: protocolInfo.logo,
               protocolType: protocolInfo.type,
               chainLogo: CHAIN_LOGOS[pool.chain || ''] || '',
@@ -1063,7 +1083,13 @@ export function usePools(): UsePoolsReturn {
 
           // Fetch APY history in the background (non-blocking)
           if (HISTORY_INDEX_HASH) {
-            fetchPoolsHistory(finalData.map(p => p.id)).then(historyMap => {
+            const poolLookups = finalData.map(p => ({
+              id: p.id,
+              project: p.projectSlug || '',
+              stablecoin: p.stablecoin,
+              chain: p.chain,
+            }));
+            fetchPoolsHistory(poolLookups).then(historyMap => {
               if (historyMap.size > 0) {
                 const poolsWithHistory = finalData.map(pool => {
                   const history = historyMap.get(pool.id);
