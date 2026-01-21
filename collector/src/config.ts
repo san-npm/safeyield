@@ -4,7 +4,7 @@
 
 export const CONFIG = {
   // Data retention
-  RETENTION_HOURS: 168, // 7 days of hourly data
+  RETENTION_HOURS: 2160, // 90 days of hourly data
 
   // API URLs
   DEFILLAMA_API: 'https://yields.llama.fi/pools',
