@@ -2,6 +2,7 @@
 // APY History Collector - Main Entry Point
 // ============================================
 
+import 'dotenv/config';
 import { CONFIG } from './config.js';
 import { fetchDefiLlamaPools } from './fetchers/defillama.js';
 import { fetchAllCustomPools } from './fetchers/protocols.js';

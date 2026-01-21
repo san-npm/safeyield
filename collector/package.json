@@ -11,7 +11,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "aleph-sdk-ts": "^3.9.2"
+    "aleph-sdk-ts": "^3.9.2",
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",

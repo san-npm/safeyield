@@ -15,36 +15,35 @@ const DATA_DIR = join(__dirname, '../../data');
 // Aleph SDK Integration (Optional)
 // ============================================
 
+let alephInitialized = false;
 let alephAccount: any = null;
 let alephStorePublish: any = null;
-let alephItemType: any = null;
 
 async function initAlephClient(): Promise<boolean> {
+  if (alephInitialized) {
+    return alephAccount !== null;
+  }
+  alephInitialized = true;
+
   if (!process.env.ALEPH_PRIVATE_KEY) {
+    console.log('ℹ️ No ALEPH_PRIVATE_KEY set. Using local storage.');
     return false;
   }
 
   try {
-    // Dynamic import to handle missing SDK gracefully
-    const alephSDK = await import('aleph-sdk-ts');
+    // Import Aleph SDK
+    const { accounts, messages } = await import('aleph-sdk-ts');
 
-    // Get Ethereum account using the correct import
+    // Get Ethereum account
     const privateKey = process.env.ALEPH_PRIVATE_KEY;
-    alephAccount = alephSDK.accounts.ethereum.ImportAccountFromPrivateKey(privateKey);
+    alephAccount = accounts.ethereum.ImportAccountFromPrivateKey(privateKey);
+    alephStorePublish = messages.store.Publish;
 
-    // Get store publish function
-    alephStorePublish = alephSDK.messages.store.Publish;
-
-    // ItemType enum - use string values directly since importing types is complex
-    alephItemType = {
-      inline: 'inline',
-      storage: 'storage',
-      ipfs: 'ipfs',
-    };
-
+    console.log(`✅ Aleph account initialized: ${alephAccount.address}`);
     return true;
-  } catch (error) {
-    console.warn('⚠️ Aleph SDK not available. Using local storage.');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn('⚠️ Aleph SDK initialization failed:', errorMessage);
     return false;
   }
 }
@@ -53,12 +52,8 @@ async function initAlephClient(): Promise<boolean> {
  * Upload data to Aleph IPFS
  */
 export async function uploadToAleph(data: unknown, filename: string): Promise<AlephUploadResult> {
-  // Always try local storage first in development
-  if (!process.env.ALEPH_PRIVATE_KEY) {
-    return uploadToLocal(data, filename);
-  }
-
   const initialized = await initAlephClient();
+
   if (!initialized || !alephAccount || !alephStorePublish) {
     return uploadToLocal(data, filename);
   }
@@ -70,11 +65,11 @@ export async function uploadToAleph(data: unknown, filename: string): Promise<Al
       account: alephAccount,
       fileObject: Buffer.from(content),
       channel: CONFIG.ALEPH_CHANNEL,
-      storageEngine: alephItemType?.storage || 'storage',
+      storageEngine: 'storage',
     });
 
     const hash = message?.content?.item_hash || message?.item_hash || '';
-    console.log(`✅ Uploaded ${filename} to Aleph: ${hash}`);
+    console.log(`☁️ Uploaded ${filename} to Aleph: ${hash}`);
 
     return {
       hash,
