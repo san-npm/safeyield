@@ -9,6 +9,10 @@ out/
 dist/
 build/
 
+# Collector generated data
+collector/data/
+collector/node_modules/
+
 # Testing
 coverage/
 
