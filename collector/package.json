@@ -1,0 +1,24 @@
+{
+  "name": "yiield-apy-collector",
+  "version": "1.0.0",
+  "description": "APY history collector for Yiield - stores data on Aleph/IPFS",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "collect": "npx tsx src/index.ts",
+    "dev": "npx tsx --watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "aleph-sdk-ts": "^3.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

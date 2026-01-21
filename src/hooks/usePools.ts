@@ -22,6 +22,125 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes de cache
 const LS_CACHE_KEY = 'yiield_pools_cache';
 const LS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+// ============================================
+// 📈 APY HISTORY FROM ALEPH/IPFS
+// ============================================
+const ALEPH_STORAGE_URL = 'https://api2.aleph.im/api/v0/storage/raw/';
+const HISTORY_INDEX_HASH = process.env.NEXT_PUBLIC_HISTORY_INDEX_HASH || '';
+
+// Cache for history index
+let historyIndexCache: { data: HistoryIndex | null; timestamp: number } = {
+  data: null,
+  timestamp: 0,
+};
+const HISTORY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+interface HistoryIndex {
+  version: string;
+  lastCollected: string;
+  totalPools: number;
+  pools: Record<string, { hash: string; latestApy: number; latestTvl: number }>;
+}
+
+interface PoolHistoryData {
+  poolId: string;
+  hourly: { t: string; apy: number; tvl: number }[];
+}
+
+/**
+ * Fetch the history index from Aleph/IPFS
+ */
+async function fetchHistoryIndex(): Promise<HistoryIndex | null> {
+  if (!HISTORY_INDEX_HASH) return null;
+
+  const now = Date.now();
+  if (historyIndexCache.data && (now - historyIndexCache.timestamp) < HISTORY_CACHE_TTL) {
+    return historyIndexCache.data;
+  }
+
+  try {
+    const response = await fetch(`${ALEPH_STORAGE_URL}${HISTORY_INDEX_HASH}`);
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    historyIndexCache = { data, timestamp: Date.now() };
+    return data;
+  } catch (error) {
+    console.warn('⚠️ Failed to fetch history index:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch APY history for a specific pool
+ */
+async function fetchPoolHistory(poolId: string): Promise<{ timestamp: Date; apy: number }[]> {
+  try {
+    const index = await fetchHistoryIndex();
+    if (!index?.pools[poolId]?.hash) return [];
+
+    const response = await fetch(`${ALEPH_STORAGE_URL}${index.pools[poolId].hash}`);
+    if (!response.ok) return [];
+
+    const data: PoolHistoryData = await response.json();
+    return data.hourly.map(p => ({
+      timestamp: new Date(p.t),
+      apy: p.apy,
+    }));
+  } catch (error) {
+    console.warn(`⚠️ Failed to fetch history for ${poolId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Fetch history for multiple pools in parallel (batch)
+ */
+async function fetchPoolsHistory(poolIds: string[]): Promise<Map<string, { timestamp: Date; apy: number }[]>> {
+  const historyMap = new Map<string, { timestamp: Date; apy: number }[]>();
+
+  if (!HISTORY_INDEX_HASH) return historyMap;
+
+  const index = await fetchHistoryIndex();
+  if (!index) return historyMap;
+
+  // Fetch histories in parallel (limit concurrency to avoid overwhelming the server)
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < poolIds.length; i += BATCH_SIZE) {
+    const batch = poolIds.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (poolId) => {
+        const poolInfo = index.pools[poolId];
+        if (!poolInfo?.hash) return { poolId, history: [] };
+
+        try {
+          const response = await fetch(`${ALEPH_STORAGE_URL}${poolInfo.hash}`);
+          if (!response.ok) return { poolId, history: [] };
+
+          const data: PoolHistoryData = await response.json();
+          return {
+            poolId,
+            history: data.hourly.map(p => ({
+              timestamp: new Date(p.t),
+              apy: p.apy,
+            })),
+          };
+        } catch {
+          return { poolId, history: [] };
+        }
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.history.length > 0) {
+        historyMap.set(result.value.poolId, result.value.history);
+      }
+    }
+  }
+
+  return historyMap;
+}
+
 function getLocalStorageCache(): YieldPool[] | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -941,6 +1060,26 @@ export function usePools(): UsePoolsReturn {
           setPools(finalData);
           setLastUpdated(new Date());
           setLocalStorageCache(finalData);
+
+          // Fetch APY history in the background (non-blocking)
+          if (HISTORY_INDEX_HASH) {
+            fetchPoolsHistory(finalData.map(p => p.id)).then(historyMap => {
+              if (historyMap.size > 0) {
+                const poolsWithHistory = finalData.map(pool => {
+                  const history = historyMap.get(pool.id);
+                  if (history && history.length > 0) {
+                    return { ...pool, apyHistory: history };
+                  }
+                  return pool;
+                });
+                setPools(poolsWithHistory);
+                setLocalStorageCache(poolsWithHistory);
+                console.log(`📈 Loaded APY history for ${historyMap.size} pools`);
+              }
+            }).catch(err => {
+              console.warn('⚠️ Failed to fetch APY history:', err);
+            });
+          }
         }).catch(err => {
           console.error('❌ Erreur lors du chargement des pools personnalisés:', err);
           // Les pools DefiLlama sont déjà affichés, donc pas grave si custom pools échouent
