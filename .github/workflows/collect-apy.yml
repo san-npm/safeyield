@@ -8,6 +8,10 @@ on:
   # Allow manual trigger
   workflow_dispatch:
 
+# Allow workflow to push commits
+permissions:
+  contents: write
+
 jobs:
   collect:
     runs-on: ubuntu-latest
@@ -15,6 +19,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,9 +39,29 @@ jobs:
           ALEPH_PRIVATE_KEY: ${{ secrets.ALEPH_PRIVATE_KEY }}
         run: npm run collect
 
-      - name: Save index hash artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: index-hash
-          path: collector/data/index-hash.txt
-          retention-days: 7
+      - name: Update index hash in repo
+        run: |
+          # Read the new hash
+          NEW_HASH=$(cat collector/data/index-hash.txt)
+          echo "New index hash: $NEW_HASH"
+
+          # Update the hash file
+          echo "$NEW_HASH" > public/apy-history-hash.txt
+
+          # Also update .env.production for static builds
+          echo "NEXT_PUBLIC_HISTORY_INDEX_HASH=$NEW_HASH" > .env.production
+
+      - name: Commit and push new hash
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Check if there are changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git add public/apy-history-hash.txt .env.production
+          git commit -m "chore: Update APY history index hash [skip ci]"
+          git push
