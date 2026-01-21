@@ -56,12 +56,14 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          # Check if there are changes
-          if git diff --quiet && git diff --staged --quiet; then
+          # Stage the files first (handles both new and modified files)
+          git add public/apy-history-hash.txt .env.production
+
+          # Check if there are staged changes
+          if git diff --staged --quiet; then
             echo "No changes to commit"
             exit 0
           fi
 
-          git add public/apy-history-hash.txt .env.production
           git commit -m "chore: Update APY history index hash [skip ci]"
           git push
