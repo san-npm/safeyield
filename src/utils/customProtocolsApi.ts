@@ -977,12 +977,8 @@ export async function fetchCapPools(): Promise<Partial<YieldPool>[]> {
     for (const networkId of networks) {
       for (const tokenSymbol of stablecoins) {
         try {
-          // Use proxy to bypass CORS (direct Cap API has CORS issues)
-          const isServer = typeof window === 'undefined';
-          const baseUrl = isServer ? 'https://api.cap.app' : '';
-          const endpoint = isServer
-            ? `${baseUrl}/v1/lender/${networkId}/metrics/${tokenSymbol}`
-            : `/api/proxy/cap?networkId=${networkId}&token=${tokenSymbol}`;
+          // Try direct API call (may fail due to CORS in browser)
+          const endpoint = `https://api.cap.app/v1/lender/${networkId}/metrics/${tokenSymbol}`;
 
           const metricsResponse = await fetch(endpoint);
 
