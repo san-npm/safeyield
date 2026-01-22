@@ -10,6 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "aleph-sdk-ts": "^3.9.2",
+    "ethers": "^5.8.0",
     "framer-motion": "11.2.4",
     "lucide-react": "0.378.0",
     "next": "^14.2.35",
@@ -25,5 +27,18 @@
     "postcss": "8.4.38",
     "tailwindcss": "3.4.3",
     "typescript": "5.4.5"
+  },
+  "overrides": {
+    "elliptic": "^6.6.1",
+    "axios": "^1.7.9",
+    "ws": "^8.18.0",
+    "tar": "^7.5.4",
+    "qs": "^6.14.1",
+    "form-data": "^4.0.1",
+    "tough-cookie": "^5.1.0",
+    "store2": "^2.14.4",
+    "yargs-parser": "^21.1.1",
+    "cross-spawn": "^7.0.6",
+    "@openzeppelin/contracts": "^5.2.0"
   }
 }
