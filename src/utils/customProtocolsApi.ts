@@ -553,8 +553,8 @@ export async function fetchAavePools(): Promise<Partial<YieldPool>[]> {
     }
   `;
 
-  // Main chains (exclude testnets and Ink)
-  const mainnetChainIds = [1, 42161, 43114, 8453, 56, 42220, 100, 59144, 1088, 10, 137, 534352, 1868, 146, 324, 9745];
+  // Main chains (exclude testnets, Ink, and removed chains: Celo, Sonic, zkSync, Scroll, Soneium)
+  const mainnetChainIds = [1, 42161, 43114, 8453, 56, 100, 59144, 1088, 10, 137, 9745];
 
   const variables = {
     request: {
@@ -582,23 +582,18 @@ export async function fetchAavePools(): Promise<Partial<YieldPool>[]> {
     // Only include stablecoins that match StablecoinType
     const stablecoins = ['USDC', 'USDT', 'DAI', 'USDS', 'PYUSD', 'USDe', 'USD1', 'USDG', 'EURe', 'EURC'];
 
-    // Map chain IDs to chain names
+    // Map chain IDs to chain names (excluded: Celo, Sonic, zkSync, Scroll, Soneium)
     const chainMap: Record<number, string> = {
       1: 'Ethereum',
       42161: 'Arbitrum',
       43114: 'Avalanche',
       8453: 'Base',
       56: 'BSC',
-      42220: 'Celo',
       100: 'Gnosis',
       59144: 'Linea',
       1088: 'Metis',
       10: 'Optimism',
       137: 'Polygon',
-      534352: 'Scroll',
-      1868: 'Soneium',
-      146: 'Sonic',
-      324: 'zkSync',
       9745: 'Plasma'
     };
 
@@ -615,9 +610,7 @@ export async function fetchAavePools(): Promise<Partial<YieldPool>[]> {
       'AaveV3Gnosis': 'proto_gnosis_v3',
       'AaveV3Optimism': 'proto_optimism_v3',
       'AaveV3Polygon': 'proto_polygon_v3',
-      'AaveV3Scroll': 'proto_scroll_v3',
       'AaveV3Metis': 'proto_metis_v3',
-      'AaveV3zkSync': 'proto_zksync_v3',
     };
 
     data.data.markets.forEach((market: any) => {
@@ -795,12 +788,11 @@ export async function fetchSiloPools(): Promise<Partial<YieldPool>[]> {
     const data = await response.json();
     const pools: Partial<YieldPool>[] = [];
 
-    // Chain mapping
+    // Chain mapping (excluded: Sonic)
     const chainMap: Record<string, string> = {
       ethereum: 'Ethereum',
       arbitrum: 'Arbitrum',
       avalanche: 'Avalanche',
-      sonic: 'Sonic',
     };
 
     // Stablecoins to include
@@ -1035,6 +1027,269 @@ export async function fetchCapPools(): Promise<Partial<YieldPool>[]> {
 }
 
 // ============================================
+// HYPERLIQUID PROTOCOLS
+// ============================================
+
+// Felix Protocol - Hyperliquid L1 lending
+// Docs: https://usefelix.gitbook.io/docs
+// Felix stablecoin mapping from Morpho vault assets
+// Note: USDH and USDHL are NOT included - they are separate Hyperliquid stablecoins
+const FELIX_STABLECOIN_MAP: Record<string, string> = {
+  'USDC': 'USDC',
+  'USD₮0': 'USDT',
+  'USDT0': 'USDT',
+  'USDe': 'USDe',
+};
+
+export async function fetchFelixPools(): Promise<Partial<YieldPool>[]> {
+  try {
+    // Felix vaults are on Morpho - use Morpho GraphQL API
+    // Hyperliquid chain ID on Morpho is 999
+    const query = `{
+      vaults(where: { chainId_in: [999] }, first: 100) {
+        items {
+          address
+          name
+          symbol
+          asset { symbol }
+          state { totalAssetsUsd apy netApy }
+        }
+      }
+    }`;
+
+    const response = await fetch('https://api.morpho.org/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      console.warn('⚠️ Morpho API failed for Felix, using fallback');
+      return fetchFelixFromDefiLlama();
+    }
+
+    const json = await response.json();
+    const vaults = json.data?.vaults?.items || [];
+    const pools: Partial<YieldPool>[] = [];
+
+    for (const vault of vaults) {
+      // Only include Felix vaults (symbol starts with 'fe')
+      if (!vault.symbol?.toLowerCase().startsWith('fe')) continue;
+
+      const assetSymbol = vault.asset?.symbol || '';
+      const stablecoin = FELIX_STABLECOIN_MAP[assetSymbol];
+
+      // Only include supported stablecoins
+      if (!stablecoin) continue;
+
+      const tvl = vault.state?.totalAssetsUsd || 0;
+      const apy = (vault.state?.netApy || vault.state?.apy || 0) * 100; // Convert to percentage
+
+      // Skip low TVL pools
+      if (tvl < 100000) continue;
+
+      pools.push({
+        id: `felix-${stablecoin.toLowerCase()}-hyperliquid-${vault.address.slice(-8)}`,
+        protocol: 'Felix',
+        chain: 'Hyperliquid',
+        symbol: vault.symbol,
+        stablecoin: stablecoin as any,
+        apy: apy,
+        apyBase: apy,
+        apyReward: 0,
+        tvl: tvl,
+        poolUrl: 'https://usefelix.xyz/',
+        curator: 'Felix', // Felix is the curator for these vaults
+      });
+    }
+
+    console.log(`✅ Felix: ${pools.length} stablecoin vaults trouvés via Morpho API`);
+    return pools;
+  } catch (error) {
+    console.error('❌ Erreur Felix/Morpho API:', error);
+    return fetchFelixFromDefiLlama();
+  }
+}
+
+async function fetchFelixFromDefiLlama(): Promise<Partial<YieldPool>[]> {
+  try {
+    const response = await fetch('https://yields.llama.fi/pools');
+    if (!response.ok) return [];
+
+    const json = await response.json();
+    const pools: Partial<YieldPool>[] = [];
+
+    for (const pool of json.data || []) {
+      // Match morpho-v1 pools on Hyperliquid with FE* symbols
+      if (pool.project === 'morpho-v1' && pool.chain === 'Hyperliquid') {
+        const symbol = pool.symbol?.toUpperCase() || '';
+        if (!symbol.startsWith('FE')) continue;
+
+        const stablecoin = FELIX_STABLECOIN_MAP[symbol] ||
+                          (symbol.includes('USDC') ? 'USDC' :
+                           symbol.includes('USDT') ? 'USDT' : null);
+        if (!stablecoin) continue;
+
+        pools.push({
+          id: `felix-${stablecoin.toLowerCase()}-hyperliquid-${pool.pool?.slice(-8) || ''}`,
+          protocol: 'Felix',
+          chain: 'Hyperliquid',
+          symbol: symbol,
+          stablecoin: stablecoin as any,
+          apy: pool.apy || 0,
+          apyBase: pool.apyBase || pool.apy || 0,
+          apyReward: pool.apyReward || 0,
+          tvl: pool.tvlUsd || 0,
+          poolUrl: 'https://usefelix.xyz/',
+          curator: 'Felix',
+        });
+      }
+    }
+
+    console.log(`✅ Felix: ${pools.length} pools via DefiLlama fallback`);
+    return pools;
+  } catch (error) {
+    console.error('❌ Erreur Felix DefiLlama fallback:', error);
+    return [];
+  }
+}
+
+// HyperLend - Hyperliquid L1 lending protocol
+// Docs: https://docs.hyperlend.finance/developer-documentation/api
+// Stablecoin symbol mapping for HyperLend
+// Note: USDH is NOT mapped - it's Hyperliquid's native stablecoin, separate from USDC
+const HYPERLEND_STABLECOIN_MAP: Record<string, { stablecoin: string; decimals: number }> = {
+  'USDC': { stablecoin: 'USDC', decimals: 6 },
+  'USD₮0': { stablecoin: 'USDT', decimals: 6 },
+  'USDT0': { stablecoin: 'USDT', decimals: 6 },
+  'USDe': { stablecoin: 'USDe', decimals: 18 },
+};
+
+export async function fetchHyperLendPools(): Promise<Partial<YieldPool>[]> {
+  try {
+    // Fetch both markets and rates in parallel
+    const [marketsRes, ratesRes] = await Promise.all([
+      fetch('https://api.hyperlend.finance/data/markets?chain=hyperEvm'),
+      fetch('https://api.hyperlend.finance/data/markets/rates?chain=hyperEvm'),
+    ]);
+
+    if (!marketsRes.ok || !ratesRes.ok) {
+      console.warn('⚠️ HyperLend API failed, using DefiLlama fallback');
+      return fetchHyperLendFromDefiLlama();
+    }
+
+    const marketsData = await marketsRes.json();
+    const ratesData = await ratesRes.json();
+    const pools: Partial<YieldPool>[] = [];
+
+    // Process reserves from markets data
+    const reserves = marketsData.reserves || {};
+
+    for (const [address, reserve] of Object.entries(reserves) as [string, any][]) {
+      const symbol = reserve.symbol || '';
+      const mapping = HYPERLEND_STABLECOIN_MAP[symbol];
+
+      if (!mapping) continue;
+
+      // Get rates for this token
+      const underlyingAsset = reserve.underlyingAsset;
+      const rates = ratesData[underlyingAsset];
+
+      if (!rates) continue;
+
+      // Calculate TVL = Available Liquidity + Total Borrowed
+      // In Aave-style protocols: Total Borrowed = totalScaledVariableDebt * liquidityIndex / 1e27 (Ray)
+      const decimals = parseInt(reserve.decimals || mapping.decimals.toString());
+      const RAY = 1e27;
+
+      const availableLiquidity = parseFloat(reserve.availableLiquidity || '0');
+      const scaledDebt = parseFloat(reserve.totalScaledVariableDebt || '0');
+      const liquidityIndex = parseFloat(reserve.liquidityIndex || RAY.toString());
+
+      // Calculate actual borrowed amount (scaled debt adjusted by liquidity index)
+      const totalBorrowed = (scaledDebt * liquidityIndex) / RAY;
+
+      // TVL = available + borrowed, then convert from token decimals
+      const tvl = (availableLiquidity + totalBorrowed) / Math.pow(10, decimals);
+
+      // APY is already in percentage form in the API
+      const supplyApy = rates.supplyAPY || 0;
+
+      // Skip if no meaningful data
+      if (tvl < 100000 || supplyApy <= 0) continue;
+
+      pools.push({
+        id: `hyperlend-${mapping.stablecoin.toLowerCase()}-hyperliquid`,
+        protocol: 'HyperLend',
+        chain: 'Hyperliquid',
+        symbol: mapping.stablecoin,
+        stablecoin: mapping.stablecoin as any,
+        apy: supplyApy,
+        apyBase: supplyApy,
+        apyReward: 0,
+        tvl: tvl,
+        poolUrl: 'https://app.hyperlend.finance/',
+      });
+    }
+
+    console.log(`✅ HyperLend: ${pools.length} stablecoin pools trouvés via API`);
+    return pools;
+  } catch (error) {
+    console.error('❌ Erreur HyperLend API:', error);
+    return fetchHyperLendFromDefiLlama();
+  }
+}
+
+async function fetchHyperLendFromDefiLlama(): Promise<Partial<YieldPool>[]> {
+  try {
+    const response = await fetch('https://yields.llama.fi/pools');
+    if (!response.ok) return [];
+
+    const json = await response.json();
+    const pools: Partial<YieldPool>[] = [];
+
+    for (const pool of json.data || []) {
+      if ((pool.project === 'hyperlend' || pool.project === 'hyperlend-pooled') && pool.chain === 'Hyperliquid') {
+        const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || '';
+        const mapping = HYPERLEND_STABLECOIN_MAP[symbol];
+        if (!mapping) continue;
+
+        pools.push({
+          id: `hyperlend-${mapping.stablecoin.toLowerCase()}-hyperliquid`,
+          protocol: 'HyperLend',
+          chain: 'Hyperliquid',
+          symbol: mapping.stablecoin,
+          stablecoin: mapping.stablecoin as any,
+          apy: pool.apy || 0,
+          apyBase: pool.apyBase || pool.apy || 0,
+          apyReward: pool.apyReward || 0,
+          tvl: pool.tvlUsd || 0,
+          poolUrl: 'https://app.hyperlend.finance/',
+        });
+      }
+    }
+
+    console.log(`✅ HyperLend: ${pools.length} pools via DefiLlama fallback`);
+    return pools;
+  } catch (error) {
+    console.error('❌ Erreur HyperLend DefiLlama fallback:', error);
+    return [];
+  }
+}
+
+// HyperBeat - Hyperliquid yield optimizer
+// Docs: https://docs.hyperbeat.org/
+// Note: HyperBeat vaults appear under morpho-v1 or pendle in DefiLlama with HB* prefix
+// Similar to Felix (FE*), we detect them by symbol prefix
+export async function fetchHyperBeatPools(): Promise<Partial<YieldPool>[]> {
+  // HyperBeat vaults are detected in usePools.ts transformPool()
+  // by looking for HB* symbols on Hyperliquid chain under morpho-v1/pendle
+  // This function returns empty since the pools come through DefiLlama
+  // and get rebranded in transformPool()
+  return [];
+}
+
+// ============================================
 // FONCTION PRINCIPALE : Récupérer tous les pools personnalisés
 // ============================================
 
@@ -1049,6 +1304,10 @@ export async function fetchAllCustomPools(): Promise<Partial<YieldPool>[]> {
     fetchVenusPools(), // Utilise l'API Venus pour avoir USD1 et vraies TVL
     fetchCapPools(), // Cap Money - Ethereum stablecoin yields
     fetchAavePools(), // Aave V3 GraphQL API for accurate TVL
+    // Hyperliquid protocols
+    fetchFelixPools(),
+    fetchHyperLendPools(),
+    fetchHyperBeatPools(),
     // fetchConcretePools(), // Désactivé - erreurs CORS
     // fetchSiloPools(), // Désactivé - erreurs CORS
     // fetchMellowPools(), // Désactivé - pas de vaults stablecoins
@@ -1058,7 +1317,7 @@ export async function fetchAllCustomPools(): Promise<Partial<YieldPool>[]> {
   const allPools: Partial<YieldPool>[] = [];
 
   results.forEach((result, index) => {
-    const protocolNames = ['Kamino', 'Steakhouse', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3'];
+    const protocolNames = ['Kamino', 'Steakhouse', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3', 'Felix', 'HyperLend', 'HyperBeat'];
 
     if (result.status === 'fulfilled') {
       allPools.push(...result.value);

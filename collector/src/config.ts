@@ -32,6 +32,7 @@ export const CONFIG = {
     'Linea',
     'Plasma',
     'Stable',
+    'Hyperliquid',
   ],
 
   // Supported stablecoins
@@ -53,6 +54,16 @@ export const CONFIG = {
     'EURC': 'EURC',
     'XAUT': 'XAUT',
     'PAXG': 'PAXG',
+    // Hyperliquid-specific stablecoin symbols
+    'FEUSDC': 'USDC',
+    'FEUSDT0': 'USDT',
+    'FEUSDT02': 'USDT',
+    'FEUSDH': 'USDC',
+    'FEUSDHL': 'USDC',
+    'GTUSDCC': 'USDC',
+    'USD₮0': 'USDT',
+    'USDT0': 'USDT',
+    'USDH': 'USDC',
   } as Record<string, string>,
 
   // Allowed protocols (same as frontend)
@@ -99,5 +110,10 @@ export const CONFIG = {
     're7-labs',
     'smokehouse',
     'upshift',
+    // Hyperliquid protocols
+    'felix',
+    'hyperlend',
+    'hyperlend-pooled',
+    'hyperbeat',
   ],
 };
