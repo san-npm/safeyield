@@ -288,7 +288,6 @@ interface CollectorStatus {
 }
 
 const ALEPH_STORAGE_URL = 'https://api2.aleph.im/api/v0/storage/raw/';
-const HISTORY_INDEX_HASH = process.env.NEXT_PUBLIC_HISTORY_INDEX_HASH || '';
 
 function AnalyticsContent() {
   const { pools, isLoading, refresh } = usePools();
@@ -303,15 +302,33 @@ function AnalyticsContent() {
   });
 
   // Fetch collector status from Aleph
+  // First fetches the hash dynamically from public file (updated by GitHub Actions)
+  // Falls back to env var if dynamic fetch fails
   useEffect(() => {
     async function fetchCollectorStatus() {
-      if (!HISTORY_INDEX_HASH) {
-        setCollectorStatus(prev => ({ ...prev, isLoading: false, error: true }));
-        return;
-      }
-
       try {
-        const response = await fetch(`${ALEPH_STORAGE_URL}${HISTORY_INDEX_HASH}`);
+        // Try to get hash dynamically from public file (updated by GitHub Actions)
+        let hash = '';
+        try {
+          const hashResponse = await fetch('/apy-history-hash.txt');
+          if (hashResponse.ok) {
+            hash = (await hashResponse.text()).trim();
+          }
+        } catch {
+          // Ignore fetch error, will fall back to env var
+        }
+
+        // Fall back to env var if dynamic fetch failed
+        if (!hash) {
+          hash = process.env.NEXT_PUBLIC_HISTORY_INDEX_HASH || '';
+        }
+
+        if (!hash) {
+          setCollectorStatus(prev => ({ ...prev, isLoading: false, error: true }));
+          return;
+        }
+
+        const response = await fetch(`${ALEPH_STORAGE_URL}${hash}`);
         if (!response.ok) throw new Error('Failed to fetch');
 
         const data = await response.json();
