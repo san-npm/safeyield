@@ -51,6 +51,12 @@ import {
   Server,
   ExternalLink,
   Info,
+  DollarSign,
+  TrendingUp as GrowthIcon,
+  GitCompare,
+  Plus,
+  X,
+  Trophy,
 } from 'lucide-react';
 
 // ============================================
@@ -294,6 +300,17 @@ function AnalyticsContent() {
   const { t, locale } = useI18n();
   const [selectedStablecoin, setSelectedStablecoin] = useState<string>('all');
   const [calculatorAmount, setCalculatorAmount] = useState<number>(10000);
+
+  // Growth Simulation state
+  const [simAmount, setSimAmount] = useState<number>(10000);
+  const [simPoolId, setSimPoolId] = useState<string>('');
+  const [simTimeframe, setSimTimeframe] = useState<number>(12);
+  const [simTimeUnit, setSimTimeUnit] = useState<'weeks' | 'months' | 'years'>('months');
+  const [simCompoundFreq, setSimCompoundFreq] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+
+  // Pool Comparison state
+  const [comparisonPoolIds, setComparisonPoolIds] = useState<string[]>([]);
+
   const [collectorStatus, setCollectorStatus] = useState<CollectorStatus>({
     lastCollected: null,
     totalPools: 0,
@@ -620,6 +637,138 @@ function AnalyticsContent() {
   // Top pools
   const topPoolsByApy = useMemo(() => [...filteredPools].sort((a, b) => b.apy - a.apy).slice(0, 10), [filteredPools]);
   const topPoolsByTvl = useMemo(() => [...filteredPools].sort((a, b) => b.tvl - a.tvl).slice(0, 10), [filteredPools]);
+
+  // YPO (Yield Paid Out) Leaderboard - estimates cumulative yield based on TVL × APY
+  const ypoLeaderboard = useMemo(() => {
+    return [...pools]
+      .map(pool => {
+        const dailyYield = pool.tvl * (pool.apy / 100) / 365;
+        return {
+          ...pool,
+          ypo7d: dailyYield * 7,
+          ypo30d: dailyYield * 30,
+          ypo365d: dailyYield * 365,
+        };
+      })
+      .sort((a, b) => b.ypo30d - a.ypo30d)
+      .slice(0, 10);
+  }, [pools]);
+
+  // Growth Simulation data
+  const simulationData = useMemo(() => {
+    const selectedPool = pools.find(p => p.id === simPoolId);
+    if (!selectedPool || simAmount <= 0) return null;
+
+    const apy = selectedPool.apy / 100;
+    let periods: number;
+    let periodsPerYear: number;
+
+    // Convert timeframe to number of periods
+    switch (simTimeUnit) {
+      case 'weeks':
+        periods = simTimeframe;
+        break;
+      case 'months':
+        periods = simTimeframe;
+        break;
+      case 'years':
+        periods = simTimeframe * 12; // Convert to months for chart
+        break;
+    }
+
+    // Compound frequency
+    switch (simCompoundFreq) {
+      case 'daily':
+        periodsPerYear = 365;
+        break;
+      case 'weekly':
+        periodsPerYear = 52;
+        break;
+      case 'monthly':
+        periodsPerYear = 12;
+        break;
+    }
+
+    // Calculate total time in years
+    let totalYears: number;
+    switch (simTimeUnit) {
+      case 'weeks':
+        totalYears = simTimeframe / 52;
+        break;
+      case 'months':
+        totalYears = simTimeframe / 12;
+        break;
+      case 'years':
+        totalYears = simTimeframe;
+        break;
+    }
+
+    // Final value with compound interest: P * (1 + r/n)^(n*t)
+    const n = periodsPerYear;
+    const t = totalYears;
+    const finalValue = simAmount * Math.pow(1 + apy / n, n * t);
+    const totalEarnings = finalValue - simAmount;
+
+    // Generate chart data points (monthly intervals)
+    const chartData: { month: number; value: number; label: string }[] = [];
+    const totalMonths = simTimeUnit === 'weeks' ? Math.ceil(simTimeframe / 4) :
+                        simTimeUnit === 'months' ? simTimeframe :
+                        simTimeframe * 12;
+
+    for (let m = 0; m <= Math.min(totalMonths, 60); m += Math.max(1, Math.floor(totalMonths / 12))) {
+      const yearsElapsed = m / 12;
+      const value = simAmount * Math.pow(1 + apy / n, n * yearsElapsed);
+      chartData.push({
+        month: m,
+        value,
+        label: m === 0 ? 'Start' : m < 12 ? `${m}mo` : `${(m / 12).toFixed(1)}y`,
+      });
+    }
+
+    return {
+      pool: selectedPool,
+      initialAmount: simAmount,
+      finalValue,
+      totalEarnings,
+      effectiveApy: ((finalValue / simAmount - 1) / totalYears) * 100,
+      chartData,
+    };
+  }, [pools, simPoolId, simAmount, simTimeframe, simTimeUnit, simCompoundFreq]);
+
+  // Pool Comparison data
+  const comparisonPools = useMemo(() => {
+    return comparisonPoolIds
+      .map(id => pools.find(p => p.id === id))
+      .filter((p): p is YieldPool => p !== undefined)
+      .map(pool => {
+        // Calculate 7d average APY from history if available
+        const history = pool.apyHistory || [];
+        const last7Days = history.slice(-7);
+        const avgApy7d = last7Days.length > 0
+          ? last7Days.reduce((sum, h) => sum + h.apy, 0) / last7Days.length
+          : pool.apy;
+
+        // Calculate volatility (std deviation of APY)
+        let volatility = 0;
+        if (last7Days.length > 1) {
+          const mean = avgApy7d;
+          const squaredDiffs = last7Days.map(h => Math.pow(h.apy - mean, 2));
+          volatility = Math.sqrt(squaredDiffs.reduce((a, b) => a + b, 0) / last7Days.length);
+        }
+
+        // Calculate trend
+        const trend = last7Days.length >= 2
+          ? last7Days[last7Days.length - 1].apy - last7Days[0].apy
+          : 0;
+
+        return {
+          ...pool,
+          avgApy7d,
+          volatility,
+          trend,
+        };
+      });
+  }, [pools, comparisonPoolIds]);
 
   // TVL distribution for pie chart
   const tvlDistribution = useMemo(() => stablecoinStats.slice(0, 8).map(s => ({ name: s.stablecoin, value: s.tvl })), [stablecoinStats]);
@@ -1141,7 +1290,381 @@ function AnalyticsContent() {
             </div>
           </div>
 
-          {/* Row 7: Yield Range by Protocol */}
+          {/* Row 7: YPO (Yield Paid Out) Leaderboard */}
+          <div className="card mb-6 overflow-hidden">
+            <div className="p-6 border-b border-white/5">
+              <SectionHeader icon={DollarSign} title={t('analytics.ypoLeaderboard' as TranslationKey)} subtitle={t('analytics.ypoLeaderboardDesc' as TranslationKey)} color="text-emerald-400" />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-xs text-white/40 uppercase tracking-wider border-b border-white/5">
+                    <th className="px-6 py-4 font-medium">#</th>
+                    <th className="px-6 py-4 font-medium">{t('analytics.protocol')}</th>
+                    <th className="px-6 py-4 font-medium">{t('analytics.asset')}</th>
+                    <th className="px-6 py-4 font-medium text-right">{t('analytics.tvl')}</th>
+                    <th className="px-6 py-4 font-medium text-right">APY</th>
+                    <th className="px-6 py-4 font-medium text-right">{t('analytics.ypo7d' as TranslationKey)}</th>
+                    <th className="px-6 py-4 font-medium text-right">{t('analytics.ypo30d' as TranslationKey)}</th>
+                    <th className="px-6 py-4 font-medium text-right">{t('analytics.ypo365d' as TranslationKey)}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ypoLeaderboard.map((pool, index) => (
+                    <tr key={pool.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                      <td className="px-6 py-4">
+                        <span className={`text-sm font-medium ${index < 3 ? 'text-emerald-400' : 'text-white/40'}`}>
+                          {index === 0 ? <Trophy className="w-4 h-4 inline text-yellow-400" /> : index + 1}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {pool.protocolLogo ? (
+                            <img src={pool.protocolLogo} alt={pool.protocol} className="w-8 h-8 rounded-lg bg-white/10" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm font-bold text-white/60">
+                              {pool.protocol.charAt(0)}
+                            </div>
+                          )}
+                          <span className="font-medium text-white">{pool.protocol}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {pool.stablecoinLogo && <img src={pool.stablecoinLogo} alt={pool.stablecoin} className="w-5 h-5 rounded-full" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
+                          <span className="text-white/60">{pool.stablecoin}</span>
+                          <span className="text-white/30">•</span>
+                          <span className="text-white/40 text-sm">{pool.chain}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-blue-400 font-medium">{formatTvl(pool.tvl)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-safe-400 font-medium">{pool.apy.toFixed(2)}%</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-white/70">{formatTvl(pool.ypo7d)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-emerald-400 font-medium">{formatTvl(pool.ypo30d)}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="text-yellow-400 font-bold">{formatTvl(pool.ypo365d)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 bg-emerald-500/5 border-t border-emerald-500/20">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-white/60">
+                  {t('analytics.ypoNote' as TranslationKey)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 8: Growth Simulation */}
+          <div className="card mb-6 p-6">
+            <SectionHeader icon={GrowthIcon} title={t('analytics.growthSimulation' as TranslationKey)} subtitle={t('analytics.growthSimulationDesc' as TranslationKey)} color="text-cyan-400" />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Simulation Controls */}
+              <div className="space-y-4">
+                {/* Initial Investment */}
+                <div>
+                  <label className="block text-sm text-white/50 mb-2">{t('analytics.initialInvestment' as TranslationKey)} (USD)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={simAmount}
+                      onChange={(e) => setSimAmount(Math.max(0, Number(e.target.value)))}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-medium focus:outline-none focus:border-cyan-400/50"
+                    />
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    {[1000, 5000, 10000, 50000, 100000].map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => setSimAmount(amount)}
+                        className={`px-2 py-1 rounded text-xs transition-colors ${
+                          simAmount === amount ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-white/50 hover:bg-white/10'
+                        }`}
+                      >
+                        ${formatCompact(amount)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pool Selection */}
+                <div>
+                  <label className="block text-sm text-white/50 mb-2">{t('analytics.selectPool' as TranslationKey)}</label>
+                  <select
+                    value={simPoolId}
+                    onChange={(e) => setSimPoolId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-400/50"
+                  >
+                    <option value="" className="bg-dark-900">{t('analytics.selectPool' as TranslationKey)}...</option>
+                    {[...pools].sort((a, b) => b.apy - a.apy).slice(0, 30).map(pool => (
+                      <option key={pool.id} value={pool.id} className="bg-dark-900">
+                        {pool.protocol} - {pool.stablecoin} ({pool.chain}) - {pool.apy.toFixed(2)}% APY
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Timeframe */}
+                <div>
+                  <label className="block text-sm text-white/50 mb-2">{t('analytics.timeframe' as TranslationKey)}</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={simTimeframe}
+                      onChange={(e) => setSimTimeframe(Math.max(1, Number(e.target.value)))}
+                      className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-400/50"
+                    />
+                    <select
+                      value={simTimeUnit}
+                      onChange={(e) => setSimTimeUnit(e.target.value as 'weeks' | 'months' | 'years')}
+                      className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-400/50"
+                    >
+                      <option value="weeks" className="bg-dark-900">{t('analytics.weeks' as TranslationKey)}</option>
+                      <option value="months" className="bg-dark-900">{t('analytics.months' as TranslationKey)}</option>
+                      <option value="years" className="bg-dark-900">{t('analytics.years' as TranslationKey)}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Compound Frequency */}
+                <div>
+                  <label className="block text-sm text-white/50 mb-2">{t('analytics.compoundFrequency' as TranslationKey)}</label>
+                  <div className="flex gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                      <button
+                        key={freq}
+                        onClick={() => setSimCompoundFreq(freq)}
+                        className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                          simCompoundFreq === freq
+                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                            : 'bg-white/5 text-white/50 hover:bg-white/10'
+                        }`}
+                      >
+                        {t(`analytics.${freq}` as TranslationKey)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Results */}
+              <div>
+                {simulationData ? (
+                  <div className="space-y-4">
+                    {/* Summary Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-center">
+                        <div className="text-xs text-white/50 mb-1">{t('analytics.projectedValue' as TranslationKey)}</div>
+                        <div className="text-xl font-bold text-cyan-400">{formatTvl(simulationData.finalValue)}</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-center">
+                        <div className="text-xs text-white/50 mb-1">{t('analytics.totalEarnings' as TranslationKey)}</div>
+                        <div className="text-xl font-bold text-green-400">+{formatTvl(simulationData.totalEarnings)}</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-center">
+                        <div className="text-xs text-white/50 mb-1">{t('analytics.effectiveApy' as TranslationKey)}</div>
+                        <div className="text-xl font-bold text-purple-400">{simulationData.effectiveApy.toFixed(2)}%</div>
+                      </div>
+                    </div>
+
+                    {/* Growth Chart */}
+                    <div className="p-4 rounded-xl bg-white/5">
+                      <div className="text-sm text-white/50 mb-3">{t('analytics.simulationChart' as TranslationKey)}</div>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <AreaChart data={simulationData.chartData} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                          <defs>
+                            <linearGradient id="simGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                          <XAxis dataKey="label" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 10 }} />
+                          <YAxis stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 10 }} tickFormatter={(v) => `$${formatCompact(v)}`} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', padding: '12px' }}
+                            formatter={(value: number) => [`$${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, 'Value']}
+                          />
+                          <Area type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} fill="url(#simGradient)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Selected Pool Info */}
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                      {simulationData.pool.protocolLogo && (
+                        <img src={simulationData.pool.protocolLogo} alt={simulationData.pool.protocol} className="w-8 h-8 rounded-lg" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      )}
+                      <div className="flex-1">
+                        <div className="font-medium text-white">{simulationData.pool.protocol}</div>
+                        <div className="text-xs text-white/40">{simulationData.pool.stablecoin} • {simulationData.pool.chain}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-safe-400 font-medium">{simulationData.pool.apy.toFixed(2)}% APY</div>
+                        <div className="text-xs text-white/40">Score: {simulationData.pool.securityScore}</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-white/40 py-12">
+                    <div className="text-center">
+                      <Calculator className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>{t('analytics.selectPool' as TranslationKey)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 9: Pool Comparison */}
+          <div className="card mb-6 p-6">
+            <SectionHeader icon={GitCompare} title={t('analytics.historicalComparison' as TranslationKey)} subtitle={t('analytics.historicalComparisonDesc' as TranslationKey)} color="text-orange-400" />
+
+            {/* Pool Selection */}
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {comparisonPools.map((pool) => (
+                  <div
+                    key={pool.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/30"
+                  >
+                    {pool.protocolLogo && (
+                      <img src={pool.protocolLogo} alt={pool.protocol} className="w-5 h-5 rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    )}
+                    <span className="text-sm text-white">{pool.protocol}</span>
+                    <span className="text-xs text-white/40">{pool.stablecoin}</span>
+                    <button
+                      onClick={() => setComparisonPoolIds(ids => ids.filter(id => id !== pool.id))}
+                      className="ml-1 p-1 rounded hover:bg-white/10 transition-colors"
+                    >
+                      <X className="w-3 h-3 text-white/50" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {comparisonPoolIds.length < 4 && (
+                <div className="flex gap-2">
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value && !comparisonPoolIds.includes(e.target.value)) {
+                        setComparisonPoolIds(ids => [...ids, e.target.value]);
+                      }
+                      e.target.value = '';
+                    }}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-400/50"
+                  >
+                    <option value="" className="bg-dark-900">{t('analytics.addPool' as TranslationKey)}...</option>
+                    {pools
+                      .filter(p => !comparisonPoolIds.includes(p.id))
+                      .sort((a, b) => b.tvl - a.tvl)
+                      .slice(0, 50)
+                      .map(pool => (
+                        <option key={pool.id} value={pool.id} className="bg-dark-900">
+                          {pool.protocol} - {pool.stablecoin} ({pool.chain})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Comparison Table */}
+            {comparisonPools.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-xs text-white/40 uppercase tracking-wider border-b border-white/5">
+                      <th className="px-4 py-3 font-medium">{t('analytics.protocol')}</th>
+                      <th className="px-4 py-3 font-medium text-right">{t('analytics.currentApy' as TranslationKey)}</th>
+                      <th className="px-4 py-3 font-medium text-right">{t('analytics.avgApy7d' as TranslationKey)}</th>
+                      <th className="px-4 py-3 font-medium text-right">{t('analytics.tvl')}</th>
+                      <th className="px-4 py-3 font-medium text-right">{t('analytics.security')}</th>
+                      <th className="px-4 py-3 font-medium text-right">{t('analytics.volatility' as TranslationKey)}</th>
+                      <th className="px-4 py-3 font-medium text-right">{t('analytics.trend' as TranslationKey)}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparisonPools.map((pool, index) => {
+                      const isBestApy = pool.apy === Math.max(...comparisonPools.map(p => p.apy));
+                      const isBestSecurity = pool.securityScore === Math.max(...comparisonPools.map(p => p.securityScore));
+                      return (
+                        <tr key={pool.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              {pool.protocolLogo ? (
+                                <img src={pool.protocolLogo} alt={pool.protocol} className="w-8 h-8 rounded-lg bg-white/10" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm font-bold text-white/60">
+                                  {pool.protocol.charAt(0)}
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-medium text-white">{pool.protocol}</div>
+                                <div className="text-xs text-white/40">{pool.stablecoin} • {pool.chain}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className={`font-medium ${isBestApy ? 'text-yellow-400' : 'text-safe-400'}`}>
+                              {pool.apy.toFixed(2)}%
+                              {isBestApy && <Trophy className="w-3 h-3 inline ml-1 text-yellow-400" />}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className="text-white/70">{pool.avgApy7d.toFixed(2)}%</span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className="text-blue-400 font-medium">{formatTvl(pool.tvl)}</span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className={`font-medium ${isBestSecurity ? 'text-emerald-400' : pool.securityScore >= 80 ? 'text-green-400' : pool.securityScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {pool.securityScore}
+                              {isBestSecurity && <Shield className="w-3 h-3 inline ml-1 text-emerald-400" />}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className={`text-sm ${pool.volatility < 0.5 ? 'text-green-400' : pool.volatility < 1 ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {pool.volatility.toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className={`flex items-center justify-end gap-1 ${pool.trend > 0 ? 'text-green-400' : pool.trend < 0 ? 'text-red-400' : 'text-white/40'}`}>
+                              {pool.trend > 0 ? <TrendingUp className="w-3 h-3" /> : pool.trend < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                              {pool.trend > 0 ? '+' : ''}{pool.trend.toFixed(2)}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-12 text-white/40">
+                <div className="text-center">
+                  <GitCompare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>{t('analytics.noPoolsSelected' as TranslationKey)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Row 10: Yield Range by Protocol */}
           <div className="card mb-6 overflow-hidden">
             <div className="p-6 border-b border-white/5">
               <SectionHeader icon={BarChart3} title={t('analytics.yieldRangeByProtocol')} subtitle={t('analytics.yieldRangeByProtocolDesc')} color="text-indigo-400" />

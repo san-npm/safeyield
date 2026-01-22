@@ -268,6 +268,20 @@ const SUPPORTED_STABLECOINS: Record<string, StablecoinType> = {
   'EURC': 'EURC',
   'XAUT': 'XAUT',
   'PAXG': 'PAXG',
+  // Hyperliquid-specific stablecoin symbols
+  'FEUSDC': 'USDC',      // Felix USDC vault
+  'FEUSDT0': 'USDT',     // Felix USDT vault
+  'FEUSDT02': 'USDT',    // Felix USDT vault 2
+  // Note: FEUSDH and FEUSDHL are NOT mapped to USDC - they are separate Hyperliquid stablecoins
+  'GTUSDCC': 'USDC',     // GT USDC vault
+  'GTUSDT0': 'USDT',     // GT USDT vault
+  'USD₮0': 'USDT',       // Hyperliquid USDT
+  'USDT0': 'USDT',       // Hyperliquid USDT alt
+  // Note: USDH is Hyperliquid's native stablecoin - NOT mapped to avoid confusion with USDC
+  // HyperBeat stablecoin symbols
+  'HBUSDC': 'USDC',      // HyperBeat USDC vault
+  'HBUSDT': 'USDT',      // HyperBeat USDT vault
+  'HYPERUSDT0': 'USDT',  // Hyper USDT vault
 };
 
 // Mapping spécial pour les vaults Lagoon dont les symboles ne correspondent pas aux stablecoins standards
@@ -346,6 +360,7 @@ const SUPPORTED_CHAINS = [
   'Linea',
   'Plasma',
   'Stable',
+  'Hyperliquid',
 ];
 
 // Logos des chaînes - Sources multiples avec fallbacks
@@ -362,6 +377,7 @@ export const CHAIN_LOGOS: Record<string, string> = {
   'Linea': '/logos/Linea-Token_Square.svg',
   'Plasma': '/logos/plasma.svg',
   'Stable': 'https://pbs.twimg.com/profile_images/1907025301030486016/Xb2R6I6__400x400.jpg',
+  'Hyperliquid': '/logos/hyperliquid.svg',
 };
 
 // ============================================
@@ -762,6 +778,44 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     logo: '/logos/Upshift-logo.svg',
   },
 
+  // ========== HYPERLIQUID PROTOCOLS ==========
+  'felix': {
+    type: 'lending',
+    name: 'Felix',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://usefelix.xyz/',
+    logo: '/logos/felix.avif',
+  },
+  'hyperlend': {
+    type: 'lending',
+    name: 'HyperLend',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://app.hyperlend.finance/',
+    logo: '/logos/hyperlend.svg',
+  },
+  'hyperlend-pooled': {
+    type: 'lending',
+    name: 'HyperLend',
+    audits: 2,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://app.hyperlend.finance/',
+    logo: '/logos/hyperlend.svg',
+  },
+  'hyperbeat': {
+    type: 'vault',
+    name: 'HyperBeat',
+    audits: 1,
+    launchYear: 2024,
+    exploits: 0,
+    earnUrl: 'https://hyperbeat.org/',
+    logo: '/logos/hyperbeat.svg',
+  },
+
   // ========== EXCLUS (exploit majeur non remboursé) ==========
   'euler-v1': {
     type: 'lending',
@@ -812,8 +866,20 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
   // Filtrer et transformer les données
   const filteredPools = pools
     .filter((pool: any) => {
+      // Check for Felix/HyperBeat rebranded vaults (they come via morpho-v1 or pendle)
+      const symbolUpper = pool.symbol?.toUpperCase() || '';
+      const isFelix = pool.project === 'morpho-v1' &&
+                      pool.chain === 'Hyperliquid' &&
+                      symbolUpper.startsWith('FE');
+      const isHyperBeat = (pool.project === 'morpho-v1' || pool.project === 'pendle') &&
+                          pool.chain === 'Hyperliquid' &&
+                          symbolUpper.startsWith('HB');
+
+      // Determine the effective protocol key
+      const effectiveProject = isFelix ? 'felix' : isHyperBeat ? 'hyperbeat' : pool.project;
+
       // Vérifier si le protocole est dans notre liste autorisée
-      const protocol = ALLOWED_PROTOCOLS[pool.project];
+      const protocol = ALLOWED_PROTOCOLS[effectiveProject];
       if (!protocol) return false;
       
       // Exclure les protocoles avec exploit majeur non remboursé
@@ -884,15 +950,41 @@ const VAULT_CURATORS: Record<string, string> = {
   'mev capital': 'MEV Capital',
   'block analitica': 'Block Analitica',
   'smokehouse': 'Smokehouse',
+  // Hyperliquid curators
+  'hyperithm': 'Hyperithm',
+  'felix': 'Felix',
+  'gt': 'GT Capital',
+  'vaultik': 'Vaultik',
+};
+
+// Symbol prefixes that indicate curators on Hyperliquid Morpho vaults
+const SYMBOL_PREFIX_CURATORS: Record<string, string> = {
+  'FE': 'Felix',       // Felix vaults (FEUSDC, FEUSDT0, etc.)
+  'GT': 'GT Capital',  // GT Capital vaults (GTUSDCC, GTUSDT0)
+  'HB': 'HyperBeat',   // HyperBeat vaults
+  'HYPER': 'Hyperithm', // Hyperithm vaults (hyperUSDT0, hyperHYPE)
+  'MC': 'MEV Capital', // MEV Capital vaults
+  'BBQ': 'Steakhouse', // Steakhouse bbq vaults
 };
 
 function extractCurator(poolMeta: string | null, symbol: string): string | undefined {
   const searchStr = (poolMeta || symbol || '').toLowerCase();
+
+  // First check standard curator names in poolMeta/symbol
   for (const [key, curator] of Object.entries(VAULT_CURATORS)) {
     if (searchStr.includes(key)) {
       return curator;
     }
   }
+
+  // Then check symbol prefixes for Hyperliquid vaults
+  const symbolUpper = symbol?.toUpperCase() || '';
+  for (const [prefix, curator] of Object.entries(SYMBOL_PREFIX_CURATORS)) {
+    if (symbolUpper.startsWith(prefix)) {
+      return curator;
+    }
+  }
+
   return undefined;
 }
 
@@ -902,7 +994,19 @@ function extractCurator(poolMeta: string | null, symbol: string): string | undef
 function transformPool(pool: any): YieldPool {
   const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || 'USDC';
   const stablecoin = detectStablecoin(symbol, pool.project);
-  const protocol = ALLOWED_PROTOCOLS[pool.project];
+
+  // Detect Felix vaults: morpho-v1 on Hyperliquid with FE* symbols
+  const isFelix = pool.project === 'morpho-v1' &&
+                  pool.chain === 'Hyperliquid' &&
+                  pool.symbol?.toUpperCase()?.startsWith('FE');
+
+  // Detect HyperBeat vaults: morpho-v1/pendle on Hyperliquid with HB* symbols
+  const isHyperBeat = (pool.project === 'morpho-v1' || pool.project === 'pendle') &&
+                      pool.chain === 'Hyperliquid' &&
+                      pool.symbol?.toUpperCase()?.startsWith('HB');
+
+  const protocolKey = isFelix ? 'felix' : isHyperBeat ? 'hyperbeat' : pool.project;
+  const protocol = ALLOWED_PROTOCOLS[protocolKey];
 
   if (!protocol) {
     throw new Error(`Protocole non trouvé: ${pool.project}`);
@@ -922,7 +1026,7 @@ function transformPool(pool: any): YieldPool {
 
   return {
     id: pool.pool,
-    projectSlug: pool.project,
+    projectSlug: protocolKey,
     protocol: protocol.name,
     protocolLogo: protocol.logo,
     protocolType: protocol.type,
@@ -1129,18 +1233,18 @@ export function usePools(): UsePoolsReturn {
             chain: p.chain,
           }));
           fetchPoolsHistory(poolLookups).then(historyMap => {
-              if (historyMap.size > 0) {
-                const poolsWithHistory = finalData.map(pool => {
-                  const history = historyMap.get(pool.id);
-                  if (history && history.length > 0) {
-                    return { ...pool, apyHistory: history };
-                  }
-                  return pool;
-                });
-                setPools(poolsWithHistory);
-                setLocalStorageCache(poolsWithHistory);
-                console.log(`📈 Loaded APY history for ${historyMap.size} pools`);
-              }
+            if (historyMap.size > 0) {
+              const poolsWithHistory = finalData.map(pool => {
+                const history = historyMap.get(pool.id);
+                if (history && history.length > 0) {
+                  return { ...pool, apyHistory: history };
+                }
+                return pool;
+              });
+              setPools(poolsWithHistory);
+              setLocalStorageCache(poolsWithHistory);
+              console.log(`📈 Loaded APY history for ${historyMap.size} pools`);
+            }
           }).catch(err => {
             console.warn('⚠️ Failed to fetch APY history:', err);
           });

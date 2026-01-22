@@ -360,7 +360,8 @@ export async function fetchAavePools(): Promise<PoolData[]> {
     }
   `;
 
-  const mainnetChainIds = [1, 42161, 43114, 8453, 56, 42220, 100, 59144, 1088, 10, 137, 534352, 1868, 146, 324, 9745];
+  // Excluded: Celo (42220), Sonic (146), zkSync (324), Scroll (534352), Soneium (1868)
+  const mainnetChainIds = [1, 42161, 43114, 8453, 56, 100, 59144, 1088, 10, 137, 9745];
   const variables = { request: { chainIds: mainnetChainIds } };
 
   try {
@@ -379,11 +380,11 @@ export async function fetchAavePools(): Promise<PoolData[]> {
     const pools: PoolData[] = [];
     const stablecoins = ['USDC', 'USDT', 'DAI', 'USDS', 'PYUSD', 'USDe', 'USD1', 'USDG', 'EURe', 'EURC'];
 
+    // Excluded: Celo, Sonic, zkSync, Scroll, Soneium
     const chainMap: Record<number, string> = {
       1: 'Ethereum', 42161: 'Arbitrum', 43114: 'Avalanche', 8453: 'Base',
-      56: 'BSC', 42220: 'Celo', 100: 'Gnosis', 59144: 'Linea',
-      1088: 'Metis', 10: 'Optimism', 137: 'Polygon', 534352: 'Scroll',
-      1868: 'Soneium', 146: 'Sonic', 324: 'zkSync', 9745: 'Plasma'
+      56: 'BSC', 100: 'Gnosis', 59144: 'Linea', 1088: 'Metis',
+      10: 'Optimism', 137: 'Polygon', 9745: 'Plasma'
     };
 
     result.data.markets.forEach((market: AaveMarket) => {
@@ -530,6 +531,125 @@ export async function fetchCapPools(): Promise<PoolData[]> {
 }
 
 // ============================================
+// HYPERLIQUID PROTOCOLS
+// ============================================
+
+// Felix Protocol - Hyperliquid L1 lending
+export async function fetchFelixPools(): Promise<PoolData[]> {
+  try {
+    const response = await fetch('https://yields.llama.fi/pools');
+    if (!response.ok) {
+      throw new Error(`DefiLlama API error: ${response.status}`);
+    }
+
+    const json = await response.json();
+    const pools: PoolData[] = [];
+    const supportedStablecoins = ['USDC', 'USDT'];
+
+    for (const pool of json.data || []) {
+      if (pool.project === 'felix' && pool.chain === 'Hyperliquid') {
+        const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || '';
+        if (supportedStablecoins.includes(symbol)) {
+          pools.push({
+            id: `felix-${symbol.toLowerCase()}-hyperliquid`,
+            protocol: 'Felix',
+            chain: 'Hyperliquid',
+            symbol: symbol,
+            stablecoin: symbol,
+            apy: pool.apy || 0,
+            apyBase: pool.apyBase || pool.apy || 0,
+            apyReward: pool.apyReward || 0,
+            tvl: pool.tvlUsd || 0,
+            poolUrl: 'https://usefelix.xyz/',
+          });
+        }
+      }
+    }
+
+    return pools;
+  } catch (error) {
+    console.error('❌ Felix API error:', error);
+    return [];
+  }
+}
+
+// HyperLend - Hyperliquid L1 lending protocol
+export async function fetchHyperLendPools(): Promise<PoolData[]> {
+  try {
+    const response = await fetch('https://yields.llama.fi/pools');
+    if (!response.ok) return [];
+
+    const json = await response.json();
+    const pools: PoolData[] = [];
+    const supportedStablecoins = ['USDC', 'USDT'];
+
+    for (const pool of json.data || []) {
+      if (pool.project === 'hyperlend' && pool.chain === 'Hyperliquid') {
+        const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || '';
+        if (supportedStablecoins.includes(symbol)) {
+          pools.push({
+            id: `hyperlend-${symbol.toLowerCase()}-hyperliquid`,
+            protocol: 'HyperLend',
+            chain: 'Hyperliquid',
+            symbol: symbol,
+            stablecoin: symbol,
+            apy: pool.apy || 0,
+            apyBase: pool.apyBase || pool.apy || 0,
+            apyReward: pool.apyReward || 0,
+            tvl: pool.tvlUsd || 0,
+            poolUrl: 'https://app.hyperlend.finance/',
+          });
+        }
+      }
+    }
+
+    return pools;
+  } catch (error) {
+    console.error('❌ HyperLend API error:', error);
+    return [];
+  }
+}
+
+// HyperBeat - Hyperliquid yield optimizer
+export async function fetchHyperBeatPools(): Promise<PoolData[]> {
+  try {
+    const response = await fetch('https://yields.llama.fi/pools');
+    if (!response.ok) {
+      throw new Error(`DefiLlama API error: ${response.status}`);
+    }
+
+    const json = await response.json();
+    const pools: PoolData[] = [];
+    const supportedStablecoins = ['USDC', 'USDT'];
+
+    for (const pool of json.data || []) {
+      if (pool.project === 'hyperbeat' && pool.chain === 'Hyperliquid') {
+        const symbol = pool.symbol?.toUpperCase()?.split('-')[0] || '';
+        if (supportedStablecoins.includes(symbol)) {
+          pools.push({
+            id: `hyperbeat-${symbol.toLowerCase()}-hyperliquid`,
+            protocol: 'HyperBeat',
+            chain: 'Hyperliquid',
+            symbol: symbol,
+            stablecoin: symbol,
+            apy: pool.apy || 0,
+            apyBase: pool.apyBase || pool.apy || 0,
+            apyReward: pool.apyReward || 0,
+            tvl: pool.tvlUsd || 0,
+            poolUrl: 'https://hyperbeat.org/',
+          });
+        }
+      }
+    }
+
+    return pools;
+  } catch (error) {
+    console.error('❌ HyperBeat API error:', error);
+    return [];
+  }
+}
+
+// ============================================
 // FETCH ALL CUSTOM POOLS
 // ============================================
 
@@ -544,10 +664,14 @@ export async function fetchAllCustomPools(): Promise<PoolData[]> {
     fetchVenusPools(),
     fetchCapPools(),
     fetchAavePools(),
+    // Hyperliquid protocols
+    fetchFelixPools(),
+    fetchHyperLendPools(),
+    fetchHyperBeatPools(),
   ]);
 
   const allPools: PoolData[] = [];
-  const protocolNames = ['Kamino', 'Morpho', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3'];
+  const protocolNames = ['Kamino', 'Morpho', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3', 'Felix', 'HyperLend', 'HyperBeat'];
 
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {

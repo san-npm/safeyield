@@ -45,6 +45,7 @@ const ALL_CHAINS: { name: string; color: string }[] = [
   { name: 'Solana', color: 'bg-gradient-to-r from-purple-500/20 to-teal-500/20 text-purple-300 border-purple-500/30' },
   { name: 'Gnosis', color: 'bg-emerald-600/20 text-emerald-400 border-emerald-600/30' },
   { name: 'Linea', color: 'bg-slate-400/20 text-slate-300 border-slate-400/30' },
+  { name: 'Hyperliquid', color: 'bg-teal-500/20 text-teal-400 border-teal-500/30' },
   { name: 'Plasma', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
   { name: 'Stable', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
 ];
