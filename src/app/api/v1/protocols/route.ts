@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
     // Build protocol list with metadata
     let protocols = Object.entries(YIIELD_PROTOCOLS).map(([slug, protocol]) => {
       const protocolPools = poolsByProtocol[slug] || [];
-      const totalTvl = protocolPools.reduce((sum, pool) => sum + pool.tvlUsd, 0);
-      const chains = [...new Set(protocolPools.map((p) => p.chain))];
+      const totalTvl = protocolPools.reduce((sum: number, pool: any) => sum + pool.tvlUsd, 0);
+      const chains = [...new Set(protocolPools.map((p: any) => p.chain))];
 
       return {
         slug,

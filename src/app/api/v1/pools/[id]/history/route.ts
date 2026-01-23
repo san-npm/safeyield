@@ -61,7 +61,7 @@ export async function GET(
 
     // Parse period parameter
     const { searchParams } = new URL(request.url);
-    const period = parseStringParam(searchParams, 'period', '7d');
+    const period = parseStringParam(searchParams, 'period', '7d') || '7d';
 
     // Filter data by period
     const filteredData = filterByPeriod(historyData.hourly, period);
