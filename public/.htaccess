@@ -1,0 +1,36 @@
+# Enable rewrite engine
+RewriteEngine On
+
+# MIME Types
+AddType application/javascript .js
+AddType text/css .css
+AddType application/json .json
+AddType image/svg+xml .svg
+AddType image/webp .webp
+AddType image/avif .avif
+AddType font/woff2 .woff2
+
+# Security headers
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "SAMEORIGIN"
+Header set X-XSS-Protection "1; mode=block"
+
+# Cache static assets
+<FilesMatch "\.(js|css|png|jpg|jpeg|gif|svg|webp|avif|woff2|ico)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# Don't cache HTML files
+<FilesMatch "\.html$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</FilesMatch>
+
+# Handle SPA routing - serve index.html for non-existent files
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/_next/
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteRule ^([^.]+)$ $1/index.html [L]
+
+# Fallback to 404 page
+ErrorDocument 404 /404.html
