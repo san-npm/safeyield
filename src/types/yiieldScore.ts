@@ -89,6 +89,7 @@ export const AUDITOR_TIERS: Record<string, AuditorTier> = {
   'MixBytes': 2,
   'Cantina': 2,
   'Certora': 2,
+  'ABDK': 2,
 
   // Tier 3 (Recognized) - +3 pts
   'Hacken': 3,

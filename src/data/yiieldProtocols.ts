@@ -14,9 +14,9 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     auditors: [
       { name: 'OpenZeppelin', tier: 1, reportUrl: 'https://github.com/aave/aave-v3-core/tree/master/audits' },
       { name: 'Trail of Bits', tier: 1, reportUrl: 'https://github.com/aave/aave-v3-core/tree/master/audits' },
-      { name: 'Certik', tier: 2 },
-      { name: 'PeckShield', tier: 2 },
       { name: 'Sigma Prime', tier: 1 },
+      { name: 'PeckShield', tier: 2 },
+      { name: 'ABDK', tier: 2 },
     ],
     insurance: {
       provider: 'Nexus Mutual',
@@ -80,9 +80,15 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'doxxed',
     teamDescription: 'Led by Paul Frambot, Merlin Egalite, Mathis Gontier Delaunay',
     auditors: [
-      { name: 'Spearbit', tier: 1 },
-      { name: 'Cantina', tier: 2 },
+      { name: 'Spearbit', tier: 1, reportUrl: 'https://docs.morpho.org/get-started/resources/audits/' },
       { name: 'ChainSecurity', tier: 1 },
+      { name: 'OpenZeppelin', tier: 1 },
+      { name: 'Trail of Bits', tier: 1 },
+      { name: 'Certora', tier: 2 },
+      { name: 'Cantina', tier: 2 },
+      { name: 'Zellic', tier: 2 },
+      { name: 'ABDK', tier: 2 },
+      { name: 'Omniscia', tier: 3 },
     ],
     insurance: {
       provider: 'Nexus Mutual',
@@ -100,9 +106,12 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'doxxed',
     teamDescription: 'Same team as Morpho',
     auditors: [
-      { name: 'Spearbit', tier: 1 },
-      { name: 'Cantina', tier: 2 },
+      { name: 'Spearbit', tier: 1, reportUrl: 'https://docs.morpho.org/get-started/resources/audits/' },
+      { name: 'ChainSecurity', tier: 1 },
+      { name: 'OpenZeppelin', tier: 1 },
       { name: 'Certora', tier: 2 },
+      { name: 'Cantina', tier: 2 },
+      { name: 'Zellic', tier: 2 },
     ],
     insurance: {
       provider: 'Nexus Mutual',
@@ -143,14 +152,15 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'doxxed',
     teamDescription: 'Part of Sky ecosystem (formerly MakerDAO)',
     auditors: [
-      { name: 'ChainSecurity', tier: 1 },
-      { name: 'OpenZeppelin', tier: 1 },
+      { name: 'ChainSecurity', tier: 1, reportUrl: 'https://docs.spark.fi/dev/security/security-and-audits' },
+      { name: 'Cantina', tier: 2 },
     ],
     governance: {
       hasGovernance: true,
       governanceType: 'dao',
       description: 'Governed by Sky DAO',
     },
+    notes: 'Based on Aave V3 codebase which has extensive audits',
   },
 
   'spark-savings': {
@@ -159,8 +169,8 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'doxxed',
     teamDescription: 'Part of Sky ecosystem (formerly MakerDAO)',
     auditors: [
-      { name: 'ChainSecurity', tier: 1 },
-      { name: 'OpenZeppelin', tier: 1 },
+      { name: 'ChainSecurity', tier: 1, reportUrl: 'https://docs.spark.fi/dev/security/security-and-audits' },
+      { name: 'Cantina', tier: 2 },
     ],
     governance: {
       hasGovernance: true,
@@ -175,14 +185,15 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'doxxed',
     teamDescription: 'Part of Sky ecosystem (formerly MakerDAO)',
     auditors: [
-      { name: 'ChainSecurity', tier: 1 },
-      { name: 'OpenZeppelin', tier: 1 },
+      { name: 'ChainSecurity', tier: 1, reportUrl: 'https://docs.spark.fi/dev/security/security-and-audits' },
+      { name: 'Cantina', tier: 2 },
     ],
     governance: {
       hasGovernance: true,
       governanceType: 'dao',
       description: 'Governed by Sky DAO',
     },
+    notes: 'Based on Aave V3 codebase which has extensive audits',
   },
 
   // === ESTABLISHED PROTOCOLS ===
@@ -193,8 +204,10 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'doxxed',
     teamDescription: 'Built by Instadapp team',
     auditors: [
-      { name: 'Certik', tier: 2 },
-      { name: 'PeckShield', tier: 2 },
+      { name: 'PeckShield', tier: 2, reportUrl: 'https://docs.fluid.instadapp.io/audits-and-security.html' },
+      { name: 'MixBytes', tier: 2 },
+      { name: 'Cantina', tier: 2 },
+      { name: 'Statemind', tier: 3 },
     ],
     governance: {
       hasGovernance: false,
@@ -314,11 +327,14 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     slug: 'kamino',
     teamStatus: 'doxxed',
     auditors: [
+      { name: 'Trail of Bits', tier: 1, reportUrl: 'https://github.com/Kamino-Finance/audits' },
       { name: 'OtterSec', tier: 2 },
+      { name: 'Certora', tier: 2 },
     ],
     governance: {
       hasGovernance: false,
     },
+    notes: 'Formal verification with Certora, zero exploits since launch',
   },
 
   'marginfi': {
@@ -393,11 +409,12 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'verified',
     teamDescription: 'Verified by Yiield team',
     auditors: [
-      { name: 'Sherlock', tier: 3 },
+      { name: 'Nethermind Security', tier: 2, reportUrl: 'https://docs.lagoon.finance/resources/audits' },
     ],
     governance: {
       hasGovernance: false,
     },
+    notes: 'Multiple Nethermind audits from v0.1.0 to v0.5.1',
   },
 
   'wildcat': {
@@ -406,11 +423,12 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     teamStatus: 'verified',
     teamDescription: 'Verified by Yiield team',
     auditors: [
-      { name: 'Code4rena', tier: 3 },
+      { name: 'Code4rena', tier: 3, reportUrl: 'https://code4rena.com/reports/2023-10-wildcat' },
     ],
     governance: {
       hasGovernance: false,
     },
+    notes: 'Code4rena audits in Oct 2023 ($60.5K) and Aug 2024 ($100K)',
   },
 
   // === VAULT MANAGERS ===
