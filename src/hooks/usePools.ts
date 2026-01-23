@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { YieldPool, StablecoinType, FilterState, ProtocolType } from '@/types';
-import { fetchAllCustomPools } from '@/utils/customProtocolsApi';
+import { fetchAllCustomPools, getMerklRewardApr, fetchMerklRewards } from '@/utils/customProtocolsApi';
 
 const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 heure (aligné sur DefiLlama)
 
@@ -832,6 +832,17 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
     logo: '/logos/hyperbeat.svg',
   },
 
+  // ========== RWA PROTOCOLS ==========
+  'realt-rmm': {
+    type: 'lending',
+    name: 'RealT RMM',
+    audits: 2,
+    launchYear: 2021,
+    exploits: 0,
+    earnUrl: 'https://rmm.realtoken.network/',
+    logo: '/logos/realt.png',
+  },
+
   // ========== EXCLUS (exploit majeur non remboursé) ==========
   'euler-v1': {
     type: 'lending',
@@ -858,6 +869,7 @@ const ALLOWED_PROTOCOLS: Record<string, ProtocolInfo> = {
 /**
  * 🌐 Récupère les pools depuis l'API DefiLlama (GRATUITE)
  * Filtre : uniquement Lending + Vault Managers
+ * Also fetches Merkl rewards to enhance APY data
  */
 async function fetchFromDefiLlama(): Promise<YieldPool[]> {
   // Vérifier le cache
@@ -865,6 +877,10 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
   if (poolsCache.data && (now - poolsCache.timestamp) < CACHE_TTL) {
     return poolsCache.data;
   }
+
+  // Fetch Merkl rewards in parallel with DefiLlama data
+  const merklPromise = fetchMerklRewards();
+
   const response = await fetch('https://yields.llama.fi/pools', {
     cache: 'default',
     headers: {
@@ -878,6 +894,9 @@ async function fetchFromDefiLlama(): Promise<YieldPool[]> {
 
   const json = await response.json();
   const pools = json.data || [];
+
+  // Wait for Merkl rewards to be ready before transforming pools
+  await merklPromise;
 
   // Filtrer et transformer les données
   const filteredPools = pools
@@ -1040,6 +1059,13 @@ function transformPool(pool: any): YieldPool {
   // Extract curator for vault protocols (Morpho, etc.)
   const curator = extractCurator(pool.poolMeta, pool.symbol);
 
+  // Get additional Merkl rewards APR for this pool
+  const merklRewardApr = getMerklRewardApr(protocolKey, stablecoin, pool.chain);
+  const baseApy = pool.apyBase || pool.apy;
+  const existingRewardApy = pool.apyReward || 0;
+  const totalRewardApy = existingRewardApy + merklRewardApr;
+  const totalApy = baseApy + totalRewardApy;
+
   return {
     id: pool.pool,
     projectSlug: protocolKey,
@@ -1053,9 +1079,9 @@ function transformPool(pool: any): YieldPool {
     stablecoin,
     stablecoinLogo: STABLECOIN_LOGOS[stablecoin] || '',
     currency: STABLECOIN_CURRENCY[stablecoin] || 'USD',
-    apy: pool.apy,
-    apyBase: pool.apyBase || pool.apy,
-    apyReward: pool.apyReward || 0,
+    apy: totalApy, // Total APY including Merkl rewards
+    apyBase: baseApy,
+    apyReward: totalRewardApy, // Combined rewards (native + Merkl)
     tvl: pool.tvlUsd,
     tvlChange24h: 0,
     securityScore,

@@ -343,17 +343,61 @@ export async function fetchSteakhousePools(): Promise<Partial<YieldPool>[]> {
 }
 
 // ============================================
-// 4. REALTOKEN RMM (Gnosis)
+// 4. REALTOKEN RMM (Gnosis) - Tokenized Real Estate
 // ============================================
+
+const REALT_API_KEY = 'cf8f77bc-preprod-12a9-587d-9e2d19750b06';
+const REALT_API_BASE = 'https://api.realtoken.community';
 
 export async function fetchRealTokenPools(): Promise<Partial<YieldPool>[]> {
   try {
-    // NOTE: RealToken RMM utilise un subgraph The Graph qui nécessite une clé API
-    // Subgraph ID: 2xrWGGZ5r8Z7wdNdHxhbRVKcAD2dDgv3F2NcjrZmxifJ
-    // URL: https://gateway.thegraph.com/api/[API_KEY]/subgraphs/id/2xrWGGZ5r8Z7wdNdHxhbRVKcAD2dDgv3F2NcjrZmxifJ
-    // TODO: Ajouter une clé API The Graph pour activer RealToken RMM
-    console.warn('⚠️ RealToken RMM: Nécessite une clé API The Graph');
-    return [];
+    const response = await fetch(`${REALT_API_BASE}/v1/token`, {
+      headers: {
+        'X-AUTH-REALT-TOKEN': REALT_API_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ RealT API error: ${response.status}`);
+      return [];
+    }
+
+    const tokens = await response.json();
+    const pools: Partial<YieldPool>[] = [];
+
+    // RealT tokens that offer stablecoin-like yields
+    // These are tokenized real estate with rental income
+    for (const token of tokens) {
+      // Only include tokens with meaningful APY
+      const apy = parseFloat(token.annualPercentageYield || '0');
+      if (apy <= 0 || apy > 50) continue; // Skip invalid APYs
+
+      // Calculate TVL from token supply and price
+      const totalSupply = parseFloat(token.totalTokens || '0');
+      const tokenPrice = parseFloat(token.tokenPrice || '0');
+      const tvl = totalSupply * tokenPrice;
+
+      // Skip low TVL tokens
+      if (tvl < 10000) continue;
+
+      pools.push({
+        id: `realt-${token.uuid || token.symbol?.toLowerCase()}`,
+        protocol: 'RealT RMM',
+        chain: 'Gnosis',
+        symbol: 'USDC', // RealT yields are typically quoted in USD terms
+        stablecoin: 'USDC' as any,
+        apy: apy,
+        apyBase: apy,
+        apyReward: 0,
+        tvl: tvl,
+        poolUrl: 'https://rmm.realtoken.network/',
+        curator: 'RealT',
+      });
+    }
+
+    console.log(`✅ RealT RMM: ${pools.length} pools chargés`);
+    return pools;
   } catch (error) {
     console.error('❌ Erreur RealToken RMM API:', error);
     return [];
@@ -1290,11 +1334,174 @@ export async function fetchHyperBeatPools(): Promise<Partial<YieldPool>[]> {
 }
 
 // ============================================
+// MERKL API - External Incentives/Rewards
+// Fetches additional APY from Merkl reward campaigns
+// Docs: https://docs.merkl.xyz/integrate-merkl/app
+// ============================================
+
+interface MerklOpportunity {
+  identifier: string;
+  name: string;
+  chainId: number;
+  apr: number; // Already in percentage (50.41 = 50.41%)
+  tvl: number;
+  protocol?: {
+    name: string;
+  };
+  tokens?: Array<{
+    symbol: string;
+  }>;
+}
+
+// Chain ID to name mapping
+const MERKL_CHAIN_MAP: Record<number, string> = {
+  1: 'Ethereum',
+  10: 'Optimism',
+  42161: 'Arbitrum',
+  8453: 'Base',
+  137: 'Polygon',
+  100: 'Gnosis',
+  43114: 'Avalanche',
+  56: 'BSC',
+  59144: 'Linea',
+};
+
+// Stablecoins we care about
+const MERKL_STABLECOINS = ['USDC', 'USDT', 'DAI', 'USDS', 'USDe', 'PYUSD', 'USDG', 'GHO', 'FRAX', 'LUSD', 'crvUSD'];
+
+// Cache for Merkl data (refresh every 10 minutes)
+let merklCache: { data: Map<string, number>; timestamp: number } = {
+  data: new Map(),
+  timestamp: 0,
+};
+const MERKL_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+/**
+ * Fetch Merkl opportunities and return a map of pool identifiers to additional APR
+ * The key format is: {protocol}-{stablecoin}-{chain} (lowercase)
+ */
+export async function fetchMerklRewards(): Promise<Map<string, number>> {
+  const now = Date.now();
+  if (merklCache.data.size > 0 && (now - merklCache.timestamp) < MERKL_CACHE_TTL) {
+    return merklCache.data;
+  }
+
+  const rewardsMap = new Map<string, number>();
+
+  try {
+    // Fetch opportunities from Merkl API for each chain
+    const chainIds = Object.keys(MERKL_CHAIN_MAP).map(Number);
+
+    const fetchPromises = chainIds.map(async (chainId) => {
+      try {
+        const response = await fetch(
+          `https://api.merkl.xyz/v4/opportunities?chainId=${chainId}&status=live`,
+          { cache: 'no-store' }
+        );
+
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        return data || [];
+      } catch {
+        return [];
+      }
+    });
+
+    const results = await Promise.allSettled(fetchPromises);
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (result.status !== 'fulfilled') continue;
+
+      const opportunities = result.value;
+      const chainId = chainIds[i];
+      const chainName = MERKL_CHAIN_MAP[chainId];
+
+      for (const opp of opportunities) {
+        // Skip if no meaningful APR
+        if (!opp.apr || opp.apr <= 0) continue;
+
+        // Try to identify the protocol and token from the opportunity
+        const protocolName = opp.protocol?.name?.toLowerCase() || '';
+        const tokens = opp.tokens || [];
+
+        // Find stablecoin in tokens
+        let stablecoin = '';
+        for (const token of tokens) {
+          const symbol = token.symbol?.toUpperCase() || '';
+          if (MERKL_STABLECOINS.includes(symbol)) {
+            stablecoin = symbol;
+            break;
+          }
+        }
+
+        if (!stablecoin) continue;
+
+        // Map protocol names to our format
+        const protocolMap: Record<string, string> = {
+          'aave': 'aave-v3',
+          'aave v3': 'aave-v3',
+          'morpho': 'morpho-blue',
+          'morpho blue': 'morpho-blue',
+          'compound': 'compound-v3',
+          'compound v3': 'compound-v3',
+          'euler': 'euler-v2',
+          'euler v2': 'euler-v2',
+          'spark': 'sparklend',
+          'sparklend': 'sparklend',
+          'fluid': 'fluid',
+        };
+
+        let normalizedProtocol = '';
+        for (const [key, value] of Object.entries(protocolMap)) {
+          if (protocolName.includes(key)) {
+            normalizedProtocol = value;
+            break;
+          }
+        }
+
+        if (!normalizedProtocol) continue;
+
+        // Create key matching our pool ID format
+        const key = `${normalizedProtocol}-${stablecoin.toLowerCase()}-${chainName.toLowerCase()}`;
+
+        // Add to map (use highest APR if multiple campaigns for same pool)
+        const existingApr = rewardsMap.get(key) || 0;
+        if (opp.apr > existingApr) {
+          rewardsMap.set(key, opp.apr);
+        }
+      }
+    }
+
+    // Update cache
+    merklCache = { data: rewardsMap, timestamp: now };
+    console.log(`✅ Merkl: ${rewardsMap.size} reward opportunities loaded`);
+
+    return rewardsMap;
+  } catch (error) {
+    console.error('❌ Erreur Merkl API:', error);
+    return rewardsMap;
+  }
+}
+
+/**
+ * Get Merkl reward APR for a specific pool
+ */
+export function getMerklRewardApr(protocol: string, stablecoin: string, chain: string): number {
+  const key = `${protocol.toLowerCase()}-${stablecoin.toLowerCase()}-${chain.toLowerCase()}`;
+  return merklCache.data.get(key) || 0;
+}
+
+// ============================================
 // FONCTION PRINCIPALE : Récupérer tous les pools personnalisés
 // ============================================
 
 export async function fetchAllCustomPools(): Promise<Partial<YieldPool>[]> {
   console.log('🔄 Chargement des pools personnalisés...');
+
+  // Fetch Merkl rewards in parallel with pools
+  const merklPromise = fetchMerklRewards();
 
   const results = await Promise.allSettled([
     fetchKaminoPools(),
@@ -1308,17 +1515,21 @@ export async function fetchAllCustomPools(): Promise<Partial<YieldPool>[]> {
     fetchFelixPools(),
     fetchHyperLendPools(),
     fetchHyperBeatPools(),
+    // RWA protocols
+    fetchRealTokenPools(), // RealT RMM - Tokenized real estate on Gnosis
     // fetchConcretePools(), // Désactivé - erreurs CORS
     // fetchSiloPools(), // Désactivé - erreurs CORS
     // fetchMellowPools(), // Désactivé - pas de vaults stablecoins
-    // fetchRealTokenPools(), // Désactivé - nécessite clé API The Graph
   ]);
+
+  // Wait for Merkl rewards to be ready
+  await merklPromise;
 
   const allPools: Partial<YieldPool>[] = [];
 
-  results.forEach((result, index) => {
-    const protocolNames = ['Kamino', 'Steakhouse', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3', 'Felix', 'HyperLend', 'HyperBeat'];
+  const protocolNames = ['Kamino', 'Steakhouse', 'Fluid', 'Jupiter Lend', 'Venus', 'Cap Money', 'Aave V3', 'Felix', 'HyperLend', 'HyperBeat', 'RealT RMM'];
 
+  results.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       allPools.push(...result.value);
       console.log(`✅ ${protocolNames[index]}: ${result.value.length} pools chargés`);
