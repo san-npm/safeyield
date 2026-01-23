@@ -179,17 +179,26 @@ function AboutPageContent() {
                   We evaluate the quality and comprehensiveness of security audits performed on the protocol&apos;s smart contracts.
                 </p>
                 <div className="grid md:grid-cols-3 gap-3 text-sm">
-                  <div className="bg-safe-500/10 rounded-lg p-3 border border-safe-500/20">
-                    <span className="font-semibold text-safe-400">Tier 1</span>
-                    <p className="text-white/50 mt-1">Trail of Bits, OpenZeppelin, Consensys, Spearbit</p>
+                  <div className="bg-green-500/20 rounded-lg p-3 border border-green-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-green-400">Tier 1</span>
+                      <span className="text-xs text-green-400/60">+10 pts</span>
+                    </div>
+                    <p className="text-white/60 text-xs leading-relaxed">Trail of Bits, OpenZeppelin, Consensys Diligence, Spearbit, ChainSecurity, Sigma Prime</p>
                   </div>
-                  <div className="bg-yellow-500/10 rounded-lg p-3 border border-yellow-500/20">
-                    <span className="font-semibold text-yellow-400">Tier 2</span>
-                    <p className="text-white/50 mt-1">Certik, Quantstamp, Halborn, Peckshield</p>
+                  <div className="bg-blue-500/20 rounded-lg p-3 border border-blue-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-blue-400">Tier 2</span>
+                      <span className="text-xs text-blue-400/60">+6 pts</span>
+                    </div>
+                    <p className="text-white/60 text-xs leading-relaxed">Certik, PeckShield, Halborn, Quantstamp, OtterSec, Zellic, Nethermind, Cantina, Certora, MixBytes</p>
                   </div>
-                  <div className="bg-orange-500/10 rounded-lg p-3 border border-orange-500/20">
-                    <span className="font-semibold text-orange-400">Tier 3</span>
-                    <p className="text-white/50 mt-1">Other recognized security firms</p>
+                  <div className="bg-purple-500/20 rounded-lg p-3 border border-purple-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-purple-400">Tier 3</span>
+                      <span className="text-xs text-purple-400/60">+3 pts</span>
+                    </div>
+                    <p className="text-white/60 text-xs leading-relaxed">Sherlock, Code4rena, Hacken, Hexens, Omniscia, and other recognized firms</p>
                   </div>
                 </div>
               </div>
