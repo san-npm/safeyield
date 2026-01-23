@@ -355,6 +355,8 @@ export async function fetchRealTokenPools(): Promise<Partial<YieldPool>[]> {
       headers: {
         'X-AUTH-REALT-TOKEN': REALT_API_KEY,
         'Content-Type': 'application/json',
+        'Referer': 'https://app.yiield.xyz',
+        'Origin': 'https://app.yiield.xyz',
       },
     });
 
@@ -364,39 +366,52 @@ export async function fetchRealTokenPools(): Promise<Partial<YieldPool>[]> {
     }
 
     const tokens = await response.json();
-    const pools: Partial<YieldPool>[] = [];
 
-    // RealT tokens that offer stablecoin-like yields
-    // These are tokenized real estate with rental income
+    // Aggregate all RealT tokens into a single pool representing the RMM protocol
+    // Individual tokens are real estate properties - we want to show the overall RMM yield
+    let totalTvl = 0;
+    let weightedApySum = 0;
+    let validTokenCount = 0;
+
     for (const token of tokens) {
-      // Only include tokens with meaningful APY
       const apy = parseFloat(token.annualPercentageYield || '0');
       if (apy <= 0 || apy > 50) continue; // Skip invalid APYs
 
-      // Calculate TVL from token supply and price
       const totalSupply = parseFloat(token.totalTokens || '0');
       const tokenPrice = parseFloat(token.tokenPrice || '0');
       const tvl = totalSupply * tokenPrice;
 
-      // Skip low TVL tokens
-      if (tvl < 10000) continue;
+      if (tvl < 1000) continue; // Skip very low TVL tokens
 
-      pools.push({
-        id: `realt-${token.uuid || token.symbol?.toLowerCase()}`,
-        protocol: 'RealT RMM',
-        chain: 'Gnosis',
-        symbol: 'USDC', // RealT yields are typically quoted in USD terms
-        stablecoin: 'USDC' as any,
-        apy: apy,
-        apyBase: apy,
-        apyReward: 0,
-        tvl: tvl,
-        poolUrl: 'https://rmm.realtoken.network/',
-        curator: 'RealT',
-      });
+      totalTvl += tvl;
+      weightedApySum += apy * tvl;
+      validTokenCount++;
     }
 
-    console.log(`✅ RealT RMM: ${pools.length} pools chargés`);
+    if (validTokenCount === 0 || totalTvl < 100000) {
+      console.warn('⚠️ RealT RMM: No valid pools found');
+      return [];
+    }
+
+    // Calculate weighted average APY
+    const avgApy = weightedApySum / totalTvl;
+
+    // Create a single aggregated pool for RealT RMM
+    const pools: Partial<YieldPool>[] = [{
+      id: 'realt-rmm-gnosis',
+      protocol: 'RealT RMM',
+      chain: 'Gnosis',
+      symbol: 'USDC', // RealT yields are in USD
+      stablecoin: 'USDC' as any,
+      apy: avgApy,
+      apyBase: avgApy,
+      apyReward: 0,
+      tvl: totalTvl,
+      poolUrl: 'https://rmm.realtoken.network/',
+      curator: 'RealT',
+    }];
+
+    console.log(`✅ RealT RMM: 1 pool (${validTokenCount} properties, TVL: $${(totalTvl/1e6).toFixed(2)}M, APY: ${avgApy.toFixed(2)}%)`);
     return pools;
   } catch (error) {
     console.error('❌ Erreur RealToken RMM API:', error);
@@ -1395,7 +1410,7 @@ export async function fetchMerklRewards(): Promise<Map<string, number>> {
     const fetchPromises = chainIds.map(async (chainId) => {
       try {
         const response = await fetch(
-          `https://api.merkl.xyz/v4/opportunities?chainId=${chainId}&status=live`,
+          `https://api.merkl.xyz/v4/opportunities?chainId=${chainId}`,
           { cache: 'no-store' }
         );
 

@@ -431,6 +431,22 @@ export const YIIELD_PROTOCOLS: Record<string, YiieldProtocolInfo> = {
     notes: 'Code4rena audits in Oct 2023 ($60.5K) and Aug 2024 ($100K)',
   },
 
+  // === RWA PROTOCOLS (Real World Assets) ===
+
+  'realt-rmm': {
+    name: 'RealT RMM',
+    slug: 'realt-rmm',
+    teamStatus: 'doxxed',
+    teamDescription: 'RealT team based in US, operating since 2019',
+    auditors: [
+      { name: 'Quantstamp', tier: 2 },
+    ],
+    governance: {
+      hasGovernance: false,
+    },
+    notes: 'Tokenized real estate yields on Gnosis chain, regulated RWA protocol',
+  },
+
   // === VAULT MANAGERS ===
 
   'steakhouse': {
@@ -595,6 +611,10 @@ const PROTOCOL_ALIASES: Record<string, string> = {
   'ajna': 'ajna',
   'sky': 'sky',
   'sparklend': 'sparklend',
+  // RWA protocols
+  'realt-rmm': 'realt-rmm',
+  'realt rmm': 'realt-rmm',
+  'realt': 'realt-rmm',
 };
 
 // Helper function to get protocol info by name (case-insensitive, handles variations)
