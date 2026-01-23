@@ -42,8 +42,7 @@ let historyIndexCache: { data: HistoryIndex | null; timestamp: number } = {
 const HISTORY_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 /**
- * Fetch the history hash dynamically - tries GitHub raw URL first (always fresh),
- * then falls back to local file, then env var
+ * Fetch the history hash dynamically from local file or env var
  */
 async function getHistoryHash(): Promise<string> {
   const now = Date.now();
@@ -51,10 +50,9 @@ async function getHistoryHash(): Promise<string> {
     return historyHashCache.hash;
   }
 
-  // Try GitHub raw URL first (always up to date from Actions)
+  // Fetch from local file (updated when site is redeployed)
   try {
-    const githubHashUrl = 'https://raw.githubusercontent.com/clementfrmd/safeyield/main/public/apy-history-hash.txt';
-    const response = await fetch(githubHashUrl, { cache: 'no-store' });
+    const response = await fetch('/apy-history-hash.txt', { cache: 'no-store' });
     if (response.ok) {
       const hash = (await response.text()).trim();
       if (hash && /^[a-f0-9]{64}$/i.test(hash)) {
@@ -63,21 +61,7 @@ async function getHistoryHash(): Promise<string> {
       }
     }
   } catch {
-    // Fall back to local file
-  }
-
-  // Try local file (may be stale in static deployment)
-  try {
-    const response = await fetch('/apy-history-hash.txt');
-    if (response.ok) {
-      const hash = (await response.text()).trim();
-      if (hash && /^[a-f0-9]{64}$/i.test(hash)) {
-        historyHashCache = { hash, timestamp: now };
-        return hash;
-      }
-    }
-  } catch {
-    // Ignore
+    // Ignore fetch error
   }
 
   // Fall back to env var

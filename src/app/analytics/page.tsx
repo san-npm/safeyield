@@ -324,27 +324,18 @@ function AnalyticsContent() {
   useEffect(() => {
     async function fetchCollectorStatus() {
       try {
-        // Try to get hash from GitHub raw URL first (always up to date from Actions)
+        // Fetch hash from local file (updated when site is redeployed)
         let hash = '';
         try {
-          const githubHashUrl = 'https://raw.githubusercontent.com/clementfrmd/safeyield/main/public/apy-history-hash.txt';
-          const hashResponse = await fetch(githubHashUrl, { cache: 'no-store' });
+          const hashResponse = await fetch('/apy-history-hash.txt', { cache: 'no-store' });
           if (hashResponse.ok) {
             hash = (await hashResponse.text()).trim();
           }
         } catch {
-          // Fall back to local file if GitHub fetch fails
-          try {
-            const localResponse = await fetch('/apy-history-hash.txt');
-            if (localResponse.ok) {
-              hash = (await localResponse.text()).trim();
-            }
-          } catch {
-            // Ignore
-          }
+          // Ignore fetch error
         }
 
-        // Fall back to env var if all fetches failed
+        // Fall back to env var if fetch failed
         if (!hash) {
           hash = process.env.NEXT_PUBLIC_HISTORY_INDEX_HASH || '';
         }
