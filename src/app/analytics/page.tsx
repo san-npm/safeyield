@@ -319,23 +319,35 @@ function AnalyticsContent() {
   });
 
   // Fetch collector status from Aleph
-  // First fetches the hash dynamically from public file (updated by GitHub Actions)
-  // Falls back to env var if dynamic fetch fails
+  // Tries GitHub raw URL first (always up to date), then local file, then env var
   useEffect(() => {
     async function fetchCollectorStatus() {
       try {
-        // Fetch hash from local file (updated when site is redeployed)
+        // Try GitHub raw URL first (always up to date from Actions)
         let hash = '';
         try {
-          const hashResponse = await fetch('/apy-history-hash.txt', { cache: 'no-store' });
+          const githubUrl = 'https://raw.githubusercontent.com/clementfrmd/safeyield/main/public/apy-history-hash.txt';
+          const hashResponse = await fetch(githubUrl, { cache: 'no-store' });
           if (hashResponse.ok) {
             hash = (await hashResponse.text()).trim();
           }
         } catch {
-          // Ignore fetch error
+          // Fall back to local file
         }
 
-        // Fall back to env var if fetch failed
+        // Try local file if GitHub failed
+        if (!hash) {
+          try {
+            const localResponse = await fetch('/apy-history-hash.txt', { cache: 'no-store' });
+            if (localResponse.ok) {
+              hash = (await localResponse.text()).trim();
+            }
+          } catch {
+            // Ignore
+          }
+        }
+
+        // Fall back to env var if all fetches failed
         if (!hash) {
           hash = process.env.NEXT_PUBLIC_HISTORY_INDEX_HASH || '';
         }
