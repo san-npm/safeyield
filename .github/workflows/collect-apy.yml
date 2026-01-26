@@ -38,10 +38,19 @@ jobs:
         working-directory: collector
         run: npm ci
 
+      - name: Get current index hash
+        id: get-hash
+        run: |
+          # Fetch the current index hash from the repo (if exists)
+          CURRENT_HASH=$(cat public/apy-history-hash.txt 2>/dev/null || echo "")
+          echo "Current hash: $CURRENT_HASH"
+          echo "hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
+
       - name: Run APY collector
         working-directory: collector
         env:
           ALEPH_PRIVATE_KEY: ${{ secrets.ALEPH_PRIVATE_KEY }}
+          HISTORY_INDEX_HASH: ${{ steps.get-hash.outputs.hash }}
         run: npm run collect
 
       - name: Update index hash in repo
