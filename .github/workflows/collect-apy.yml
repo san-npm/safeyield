@@ -12,6 +12,11 @@ on:
 permissions:
   contents: write
 
+# Prevent concurrent runs from conflicting
+concurrency:
+  group: collect-apy
+  cancel-in-progress: false
+
 jobs:
   collect:
     runs-on: ubuntu-latest
@@ -66,4 +71,8 @@ jobs:
           fi
 
           git commit -m "chore: Update APY history index hash [skip ci]"
+
+          # Pull latest changes and rebase our commit on top, then push
+          # This handles the case where another commit was pushed while we were running
+          git pull --rebase origin main
           git push
