@@ -6,17 +6,42 @@
 // Failure semantics:
 //   - If ALEPH_PRIVATE_KEY is set, uploads to Aleph are MANDATORY. Any
 //     SDK or network error propagates out so the caller (and the CI
-//     workflow) can fail loudly instead of silently committing a
+//     workflow) can fail loudly instead of silently downgrading to a
 //     "local-..." pseudo-hash that the frontend then can't fetch.
 //   - If ALEPH_PRIVATE_KEY is unset, the module falls back to writing
 //     under collector/data/ for local development.
+//
+// Upload strategy — two-step approach (avoids /api/v0/storage/add_file):
+//
+//   The SDK's createStore() routes through /api/v0/storage/add_file, which
+//   requires authenticated ALEPH token balance for the "hold" payment tier
+//   (the production API does not yet accept the payment field on STORE
+//   messages, so credit/hold overrides both 422). This account has 0 free
+//   ALEPH tokens, causing every add_file call to return HTTP 422.
+//
+//   Instead we use the well-established two-step flow that the original
+//   Python aleph-client also used (as evidenced by the three successful
+//   STOREs from January 2026 on this account):
+//
+//   1. POST JSON content to /api/v0/storage/add_json (no auth needed).
+//      The Aleph node stores the content and returns its SHA-256 hash.
+//   2. Build an inline STORE message whose content points to that hash
+//      (item_type="storage", item_hash=<sha256 from step 1>).
+//      Sign with the account private key, broadcast to /api/v0/messages.
+//      The /api/v0/messages endpoint skips balance checks for STORE — it
+//      just validates the message schema + signature.
+//
+//   The resulting item_hash (sha256 of the inline message content) is a
+//   64-char hex string, which the workflow's ^[a-f0-9]{64}$ validator
+//   accepts.
 // ============================================
 
+import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { AuthenticatedAlephHttpClient } from '@aleph-sdk/client';
 import { ETHAccount, importAccountFromPrivateKey } from '@aleph-sdk/ethereum';
-import { ItemType } from '@aleph-sdk/message';
+import { ItemType, MessageType } from '@aleph-sdk/message';
+import { Blockchain } from '@aleph-sdk/core';
 import { CONFIG } from '../config.js';
 import { AlephUploadResult, HistoryIndex, PoolHistory } from '../types.js';
 
@@ -24,18 +49,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DATA_DIR = join(__dirname, '../../data');
 
-let alephClient: AuthenticatedAlephHttpClient | null = null;
 let alephAccount: ETHAccount | null = null;
+let alephApiServer: string = 'https://api2.aleph.im';
 let initAttempted = false;
 
 function alephEnabled(): boolean {
   return Boolean(process.env.ALEPH_PRIVATE_KEY);
 }
 
-function initAlephClient(): { client: AuthenticatedAlephHttpClient; account: ETHAccount } | null {
-  if (initAttempted) {
-    return alephClient && alephAccount ? { client: alephClient, account: alephAccount } : null;
-  }
+function initAlephAccount(): ETHAccount | null {
+  if (initAttempted) return alephAccount;
   initAttempted = true;
 
   const privateKey = process.env.ALEPH_PRIVATE_KEY;
@@ -45,73 +68,137 @@ function initAlephClient(): { client: AuthenticatedAlephHttpClient; account: ETH
   }
 
   // The SDK's built-in default points at api3.aleph.im, which is currently
-  // unreachable from CI runners — every upload returns "ERR_BAD_REQUEST"
-  // because the connection never establishes cleanly. Use api2.aleph.im
-  // (which is the same host the rest of CONFIG already points at). Allow
-  // overriding via ALEPH_API_SERVER so we can flip endpoints without a code
-  // change when api3 comes back.
-  const apiServer = process.env.ALEPH_API_SERVER || 'https://api2.aleph.im';
+  // unreachable from CI runners. Use api2.aleph.im. Allow overriding via
+  // ALEPH_API_SERVER so we can flip endpoints without a code change when
+  // api3 comes back.
+  alephApiServer = process.env.ALEPH_API_SERVER || 'https://api2.aleph.im';
 
   alephAccount = importAccountFromPrivateKey(privateKey);
-  alephClient = new AuthenticatedAlephHttpClient(alephAccount, apiServer);
-  console.log(`✅ Aleph client initialized for ${alephAccount.address} (api: ${apiServer})`);
+  console.log(`✅ Aleph client initialized for ${alephAccount.address} (api: ${alephApiServer})`);
 
-  return { client: alephClient, account: alephAccount };
+  return alephAccount;
 }
 
 /**
- * Upload data to Aleph IPFS storage. Throws when ALEPH_PRIVATE_KEY is set and
+ * Step 1: Upload raw JSON to /api/v0/storage/add_json (no authentication needed).
+ * Returns the SHA-256 hex hash of the stored content.
+ */
+async function uploadJsonToStorage(jsonContent: string): Promise<string> {
+  const url = `${alephApiServer}/api/v0/storage/add_json`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: jsonContent,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '<no body>');
+    throw new Error(`Aleph storage/add_json failed (${response.status}): ${body.slice(0, 300)}`);
+  }
+  const result = await response.json() as { status: string; hash: string };
+  if (!result.hash) {
+    throw new Error(`Aleph storage/add_json returned no hash: ${JSON.stringify(result)}`);
+  }
+  return result.hash;
+}
+
+/**
+ * Step 2: Build an inline STORE message, sign it, and broadcast it to
+ * /api/v0/messages.  The message content points to the storage hash from
+ * step 1. Returns the message's item_hash (sha256 of the inline content).
+ */
+async function broadcastStoreMessage(account: ETHAccount, storageHash: string): Promise<string> {
+  const timestamp = Date.now() / 1000;
+
+  // Build the StoreContent JSON exactly as the successful January 2026
+  // STOREs did: no payment field, no extra_fields, just address/item_type/
+  // item_hash/time.  JSON.stringify with no spaces to match the SDK's
+  // sha256(JSON.stringify(content)) hashing.
+  const storeContent = JSON.stringify({
+    address: account.address,
+    item_type: ItemType.storage,
+    item_hash: storageHash,
+    time: timestamp,
+  });
+
+  // Compute item_hash of the inline message (sha256 of the content string).
+  const itemHash = createHash('sha256').update(storeContent).digest('hex');
+
+  // Build the broadcastable message object.
+  const chain = Blockchain.ETH;
+  const type = MessageType.store;
+  const sender = account.address;
+  const message = {
+    chain,
+    sender,
+    type,
+    item_type: ItemType.inline,
+    item_hash: itemHash,
+    item_content: storeContent,
+    channel: CONFIG.ALEPH_CHANNEL,
+    time: timestamp,
+    // Implement SignableMessage interface required by account.sign():
+    // getVerificationBuffer() returns Buffer.from([chain, sender, type, item_hash].join('\n'))
+    getVerificationBuffer: () => Buffer.from([chain, sender, type, itemHash].join('\n')),
+  };
+
+  // Sign the message using the ETH account's sign() method.
+  const signature = await account.sign(message);
+
+  // Broadcast via /api/v0/messages (no balance check for STORE on this endpoint).
+  const url = `${alephApiServer}/api/v0/messages`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sync: true,
+      message: {
+        chain: message.chain,
+        sender: message.sender,
+        type: message.type,
+        item_type: message.item_type,
+        item_hash: message.item_hash,
+        item_content: message.item_content,
+        channel: message.channel,
+        time: message.time,
+        signature,
+      },
+    }),
+  });
+
+  if (!response.ok && response.status !== 202) {
+    const body = await response.text().catch(() => '<no body>');
+    throw new Error(`Aleph /api/v0/messages failed (${response.status}): ${body.slice(0, 400)}`);
+  }
+
+  return itemHash;
+}
+
+/**
+ * Upload data to Aleph storage. Throws when ALEPH_PRIVATE_KEY is set and
  * the upload fails, so callers (notably the CI workflow) can surface the
  * failure instead of silently downgrading to local pseudo-hashes.
  */
 export async function uploadToAleph(data: unknown, filename: string): Promise<AlephUploadResult> {
-  const ctx = initAlephClient();
-  if (!ctx) {
+  const account = initAlephAccount();
+  if (!account) {
     return uploadToLocal(data, filename);
   }
 
   const content = JSON.stringify(data, null, 2);
   try {
-    const message = await ctx.client.createStore({
-      channel: CONFIG.ALEPH_CHANNEL,
-      fileObject: Buffer.from(content),
-      storageEngine: ItemType.storage,
-      // NOTE: do NOT pass a `payment` field here. The Aleph production API
-      // does not yet support the payment schema for STORE messages — passing
-      // any payment object (hold, credit, superfluid) results in HTTP 422
-      // (InvalidMessageError). The SDK test suite skips payment tests for
-      // STORE with the comment "Unskip once the production API supports the
-      // new payment schema for STORE messages". All prior successful STOREs
-      // from this account have no payment field. Omitting it falls back to
-      // the Aleph default free-storage path, which works fine for small JSON
-      // blobs like ours.
-      // TODO: re-add payment once the Aleph API supports it (track upstream:
-      //   aleph-im/aleph-sdk-ts packages/message/__tests__/store/publish.test.ts)
-      sync: true,
-    });
+    // Step 1: store the raw JSON, get its storage hash.
+    const storageHash = await uploadJsonToStorage(content);
 
-    const hash = message.item_hash;
-    if (!hash) {
-      throw new Error(`Aleph createStore for ${filename} returned no item_hash`);
-    }
+    // Step 2: broadcast an authenticated STORE message pointing to that hash.
+    const messageHash = await broadcastStoreMessage(account, storageHash);
 
-    console.log(`☁️ Uploaded ${filename} to Aleph: ${hash}`);
-    return { hash, success: true };
+    // The message item_hash (64-char hex) is what callers (and the workflow
+    // hash validator) use to identify this upload.
+    console.log(`☁️ Uploaded ${filename} to Aleph: ${messageHash} (storage: ${storageHash})`);
+    return { hash: messageHash, success: true };
   } catch (error: unknown) {
-    // Surface the actual server response so we can diagnose 4xx/5xx,
-    // not just the bare stack trace. Try multiple possible shapes —
-    // AxiosError exposes `.response`, but the SDK may also re-wrap.
-    const err = error as Record<string, unknown> & { toJSON?: () => unknown };
-    const response = err.response as { status?: number; data?: unknown; statusText?: string } | undefined;
-    const detailParts: string[] = [];
-    if (response?.status) detailParts.push(`status=${response.status} ${response.statusText ?? ''}`.trim());
-    if (response?.data !== undefined) detailParts.push(`body=${JSON.stringify(response.data)}`);
-    if (err.code) detailParts.push(`code=${err.code}`);
-    if (err.message) detailParts.push(`message=${err.message}`);
-    if (detailParts.length === 0 && typeof err.toJSON === 'function') {
-      try { detailParts.push(JSON.stringify(err.toJSON())); } catch { /* ignore */ }
-    }
-    throw new Error(`Aleph createStore failed for ${filename}: ${detailParts.join(' | ') || String(error)}`);
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Aleph upload failed for ${filename}: ${msg}`);
   }
 }
 
