@@ -80,12 +80,19 @@ export async function uploadToAleph(data: unknown, filename: string): Promise<Al
     return { hash, success: true };
   } catch (error: unknown) {
     // Surface the actual server response so we can diagnose 4xx/5xx,
-    // not just the bare stack trace.
-    const err = error as { response?: { status?: number; data?: unknown }; message?: string };
-    const status = err.response?.status;
-    const body = err.response?.data;
-    const detail = body !== undefined ? JSON.stringify(body) : err.message;
-    throw new Error(`Aleph createStore failed for ${filename} (status ${status ?? '?'}): ${detail}`);
+    // not just the bare stack trace. Try multiple possible shapes —
+    // AxiosError exposes `.response`, but the SDK may also re-wrap.
+    const err = error as Record<string, unknown> & { toJSON?: () => unknown };
+    const response = err.response as { status?: number; data?: unknown; statusText?: string } | undefined;
+    const detailParts: string[] = [];
+    if (response?.status) detailParts.push(`status=${response.status} ${response.statusText ?? ''}`.trim());
+    if (response?.data !== undefined) detailParts.push(`body=${JSON.stringify(response.data)}`);
+    if (err.code) detailParts.push(`code=${err.code}`);
+    if (err.message) detailParts.push(`message=${err.message}`);
+    if (detailParts.length === 0 && typeof err.toJSON === 'function') {
+      try { detailParts.push(JSON.stringify(err.toJSON())); } catch { /* ignore */ }
+    }
+    throw new Error(`Aleph createStore failed for ${filename}: ${detailParts.join(' | ') || String(error)}`);
   }
 }
 
