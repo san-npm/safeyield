@@ -1,0 +1,62 @@
+#cloud-config
+# Yiield API Server - Cloud-Init for Aleph Cloud
+# Paste this into the "User Data" or "Cloud-Init" field when creating instance
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - git
+  - build-essential
+
+runcmd:
+  # Install Node.js 20.x
+  - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  - apt-get install -y nodejs
+
+  # Create app directory
+  - mkdir -p /opt/yiield-api
+  - cd /opt/yiield-api
+
+  # Clone repository
+  - git clone --depth 1 https://github.com/san-npm/safeyield.git /opt/yiield-api
+
+  # Install and build API
+  - cd /opt/yiield-api/api-server
+  - npm ci
+  - npm run build
+
+  # Create systemd service
+  - |
+    cat > /etc/systemd/system/yiield-api.service << 'SERVICEEOF'
+    [Unit]
+    Description=Yiield Public API Server
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=root
+    WorkingDirectory=/opt/yiield-api/api-server
+    ExecStart=/usr/bin/node dist/index.js
+    Restart=on-failure
+    RestartSec=10
+    Environment=NODE_ENV=production
+    Environment=PORT=3001
+
+    [Install]
+    WantedBy=multi-user.target
+    SERVICEEOF
+
+  # Start service
+  - systemctl daemon-reload
+  - systemctl enable yiield-api
+  - systemctl start yiield-api
+
+# Open port 3001
+write_files:
+  - path: /etc/yiield-api-installed
+    content: |
+      Yiield API installed successfully
+      API running on port 3001
+      Test: curl http://localhost:3001/health

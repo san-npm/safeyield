@@ -1,168 +1,141 @@
-# SafeYield 🛡️
+# Yiield
 
-Dashboard de rendements stablecoins sécurisés.
+**Compare the best stablecoin yields across DeFi — with a security score that actually means something.**
 
-![SafeYield Preview](./docs/preview.png)
-
-## 🎯 Fonctionnalités
-
-- **Top 3 quotidien** : Les meilleurs yields avec score de sécurité optimal
-- **Score de sécurité** : Évaluation 0-100 basée sur audits, ancienneté, TVL et historique
-- **Filtres avancés** : Par stablecoin (USDC, USDT, DAI, EURe, EURC) et par chaîne
-- **Mise à jour automatique** : Refresh toutes les 10 minutes
-- **PWA** : Installable sur mobile
-- **UX simple** : Interface épurée sans jargon technique
-
-## 🛠️ Stack technique
-
-- **Framework** : Next.js 14 (App Router)
-- **Styling** : Tailwind CSS
-- **Icônes** : Lucide React
-- **Graphiques** : Recharts
-- **Animations** : Framer Motion
-- **Données** : API DefiLlama (gratuite)
-
-## 🚀 Démarrage rapide
-
-### Prérequis
-
-- Node.js 18+
-- npm ou yarn
-
-### Installation
-
-```bash
-# Cloner le repo
-git clone https://github.com/your-username/safeyield.git
-cd safeyield
-
-# Installer les dépendances
-npm install
-
-# Lancer en développement
-npm run dev
-```
-
-Ouvrir [http://localhost:3000](http://localhost:3000)
-
-### Build production
-
-```bash
-# Build statique (pour Aleph Cloud)
-npm run build
-
-# Les fichiers sont dans ./out/
-```
-
-## ☁️ Déploiement sur Aleph Cloud
-
-### Option 1 : Via le Dashboard Aleph
-
-1. Build le projet : `npm run build`
-2. Aller sur [console.aleph.cloud](https://console.aleph.cloud)
-3. Créer un nouveau site web
-4. Uploader le contenu du dossier `out/`
-5. Configurer le domaine custom (optionnel)
-
-### Option 2 : Via CLI Aleph
-
-```bash
-# Installer le CLI Aleph
-pip install aleph-client
-
-# Déployer
-aleph file upload ./out --channel safeyield
-```
-
-## 📊 Source des données
-
-Les données proviennent de l'API gratuite DefiLlama :
-- Endpoint yields : `https://yields.llama.fi/pools`
-- Mise à jour : Toutes les heures côté DefiLlama
-
-### Score de sécurité
-
-Le score est calculé sur 100 points :
-
-| Critère | Points | Description |
-|---------|--------|-------------|
-| Audits | 0-25 | Nombre d'audits de sécurité |
-| Ancienneté | 0-25 | Durée d'existence du protocole |
-| TVL | 0-25 | Montant total verrouillé |
-| Historique | 0-25 | Absence d'exploits passés |
-
-## 💰 Monétisation (à implémenter)
-
-### Phase 1 - Liens d'affiliation
-- Ajouter des liens référents vers les protocoles
-- Commission sur les dépôts (0.1-1%)
-
-### Phase 2 - Premium
-- Alertes personnalisées par email/Telegram
-- Données historiques étendues
-- Recommandations IA
-
-## 📁 Structure du projet
-
-```
-safeyield/
-├── public/
-│   ├── manifest.json     # Config PWA
-│   └── icons/            # Icônes PWA
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx    # Layout principal
-│   │   └── page.tsx      # Page d'accueil
-│   ├── components/
-│   │   ├── Header.tsx
-│   │   ├── Footer.tsx
-│   │   ├── TopPools.tsx
-│   │   ├── PoolsTable.tsx
-│   │   ├── Filters.tsx
-│   │   ├── Stats.tsx
-│   │   └── SecurityScore.tsx
-│   ├── hooks/
-│   │   └── usePools.ts   # Hook de données
-│   ├── utils/
-│   │   ├── api.ts        # Appels API
-│   │   └── security.ts   # Calcul score
-│   ├── data/
-│   │   └── mockPools.ts  # Données démo
-│   ├── types/
-│   │   └── index.ts      # Types TypeScript
-│   └── styles/
-│       └── globals.css   # Styles globaux
-├── next.config.js
-├── tailwind.config.js
-├── tsconfig.json
-└── package.json
-```
-
-## 🔧 Configuration API (Production)
-
-Pour utiliser l'API DefiLlama en production, modifier `src/hooks/usePools.ts` :
-
-```typescript
-// Décommenter cette ligne :
-// const data = await fetchYieldPools();
-
-// Et commenter les données mock
-```
-
-## 📝 TODO
-
-- [ ] Intégration API DefiLlama réelle
-- [ ] Graphiques historiques APY
-- [ ] Système d'alertes
-- [ ] Mode comparaison
-- [ ] Multi-langue (EN)
-- [ ] Tests unitaires
-- [ ] Liens d'affiliation
-
-## 📄 Licence
-
-MIT © COMMIT MEDIA 2026
+Live app: [www.yiield.xyz](https://www.yiield.xyz) · Built by [COMMIT MEDIA](mailto:contact@yiield.xyz) · Hosted on [Aleph Cloud](https://aleph.cloud)
 
 ---
 
-**Powered by [Aleph Cloud](https://aleph.cloud)** ☁️
+## What it does
+
+Yiield aggregates stablecoin yields from 20+ DeFi protocols across 12 chains and ranks them with the **Yiield Score** — a proprietary 0–100 security rating so users can compare returns *and* risk side by side. The full app is statically exported and served from Aleph Cloud's decentralized IPFS network — no centralized backend.
+
+Supported assets (12 canonical):
+
+| USD | EUR | Gold |
+|-----|-----|------|
+| USDC · USDT · DAI · PYUSD · USDe · USDS · USD1 · USDG | EURe · EURC | XAUT · PAXG |
+
+Supported chains: Ethereum · Arbitrum · Optimism · Base · Polygon · BNB Chain · Avalanche · Solana · Gnosis · Linea · Hyperliquid · Plasma.
+
+UI is available in 5 languages: English · French · German · Spanish · Italian.
+
+---
+
+## The Yiield Score
+
+A weighted 0–100 rating, reviewed weekly:
+
+| Dimension | Weight | What we look at |
+|-----------|-------:|-----------------|
+| **Audit quality** | 30% | Tiered firm rating. Tier 1 (Trail of Bits, OpenZeppelin, Consensys Diligence, Spearbit, ChainSecurity, Sigma Prime) = +10 / Tier 2 (Certik, PeckShield, Halborn, Quantstamp, OtterSec, Zellic, Nethermind, Cantina, Certora, MixBytes) = +6 / Tier 3 (Sherlock, Code4rena, Hacken, others) = +3 |
+| **Team transparency** | 25% | Doxxed identities, verifiable history, active comms |
+| **Protocol maturity** | 20% | Time since mainnet, TVL stability, exploit history, recovery quality |
+| **Governance** | 15% | Timelock (24h+), multisig (3/5+), DAO process, pause controls |
+| **Insurance & coverage** | 10% | Nexus Mutual, InsurAce, native funds, Immunefi bounty |
+
+Protocols marked **Verified by Yiield** have had direct contact with the team and enhanced due diligence.
+
+---
+
+## Architecture
+
+A monorepo with three independent workspaces:
+
+| Path | Stack | Role |
+|------|-------|------|
+| `src/` | Next.js 14 (App Router) · TypeScript · Tailwind · Recharts · Framer Motion | Static frontend dApp, deployed as `out/` to Aleph IPFS |
+| `collector/` | Node 20 · `aleph-sdk-ts` · ethers v5 | Hourly cron — pulls APY from DefiLlama + custom protocol APIs, writes per-pool history + index to Aleph IPFS, commits the new index hash back to the repo |
+| `api-server/` | Express · TypeScript | Public REST API (`/api/v1/pools`, `/protocols`, `/stats`) with filtering, sorting, pagination |
+
+The frontend reads `public/apy-history-hash.txt` at runtime, then fetches per-pool history directly from Aleph IPFS — no centralized database, no backend dependency for the core UX.
+
+---
+
+## Local development
+
+Requires Node.js 20+.
+
+```bash
+# Install deps for each workspace
+npm install
+npm --prefix collector install
+npm --prefix api-server install
+
+# Run the frontend (http://localhost:3000)
+npm run dev
+
+# Build the static export for Aleph
+npm run build      # output: ./out/
+
+# Run the API server (http://localhost:3001)
+cd api-server && npm run dev
+
+# Manually run the APY collector (needs ALEPH_PRIVATE_KEY)
+cd collector && npm run collect
+```
+
+---
+
+## APY History collector
+
+`.github/workflows/collect-apy.yml` runs hourly:
+
+1. Reads the current index hash from `public/apy-history-hash.txt`.
+2. Fetches pools from DefiLlama + protocol-specific APIs in parallel; merges by `protocol–chain–stablecoin`.
+3. Appends a new hourly data point per pool, prunes points outside the retention window, uploads each `pools/<id>.json` and a unified `index.json` to Aleph IPFS.
+4. Commits the new index hash back so the static frontend picks it up.
+
+Required secret: `ALEPH_PRIVATE_KEY`.
+
+---
+
+## Public REST API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/pools` | List pools — filter by `chain`, `stablecoin`, `protocol`, `minApy`, `maxApy`, `minTvl`; sort by `apy`, `tvl`, `securityScore`; paginate via `limit`, `offset` |
+| `GET /api/v1/pools/:id` | Single pool by id |
+| `GET /api/v1/protocols` | All protocols with aggregated TVL |
+| `GET /api/v1/protocols/:slug` | Pools for one protocol |
+| `GET /api/v1/stats` | Aggregated TVL, average APY, pool count |
+| `GET /health` | Liveness check |
+
+Full docs: [www.yiield.xyz/api-docs](https://www.yiield.xyz/api-docs).
+
+---
+
+## Deployment (Aleph Cloud)
+
+```bash
+npm run build
+# Upload ./out/ via the Aleph console (https://console.aleph.cloud)
+# OR via the CLI: aleph file upload ./out --channel yiield
+```
+
+Bind a custom domain to the resulting item hash from the Aleph console (DOMAINS → Add). Three DNS records on the parent domain:
+
+- `CNAME` `<subdomain>` → `ipfs.public.aleph.sh`
+- `CNAME` `_dnslink.<subdomain>` → `_dnslink.<subdomain>.static.public.aleph.sh`
+- `TXT`   `_control.<subdomain>` → controller wallet address
+
+---
+
+## Stack
+
+- **Frontend** — Next.js 14, React 18, TypeScript, Tailwind, Recharts, Framer Motion, lucide-react
+- **Web3** — ethers v5, aleph-sdk-ts
+- **Collector** — Node 20, GitHub Actions
+- **API** — Express, TypeScript
+- **Hosting** — Aleph Cloud (decentralized IPFS)
+- **Data** — DefiLlama Yields API + protocol-specific integrations (Merkl, custom)
+
+---
+
+## Contact
+
+[contact@yiield.xyz](mailto:contact@yiield.xyz) — for protocol inclusion, partnerships, feedback.
+
+## License
+
+MIT © COMMIT MEDIA 2026
