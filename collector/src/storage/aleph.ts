@@ -16,7 +16,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { AuthenticatedAlephHttpClient } from '@aleph-sdk/client';
 import { ETHAccount, importAccountFromPrivateKey } from '@aleph-sdk/ethereum';
-import { ItemType } from '@aleph-sdk/message';
+import { ItemType, PaymentType } from '@aleph-sdk/message';
+import { Blockchain } from '@aleph-sdk/core';
 import { CONFIG } from '../config.js';
 import { AlephUploadResult, HistoryIndex, PoolHistory } from '../types.js';
 
@@ -76,6 +77,13 @@ export async function uploadToAleph(data: unknown, filename: string): Promise<Al
       channel: CONFIG.ALEPH_CHANNEL,
       fileObject: Buffer.from(content),
       storageEngine: ItemType.storage,
+      // Pay with credits (the account holds ~70M credits but 0 ALEPH, so
+      // the default hold-tier path 422s). Override via ALEPH_PAYMENT_TYPE
+      // if we ever want to switch to hold/superfluid.
+      payment: {
+        chain: Blockchain.ETH,
+        type: (process.env.ALEPH_PAYMENT_TYPE as PaymentType) || PaymentType.credit,
+      },
       sync: true,
     });
 
