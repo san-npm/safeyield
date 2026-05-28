@@ -146,9 +146,11 @@ export async function fetchKaminoPools(): Promise<PoolData[]> {
 
 export async function fetchMorphoPools(): Promise<PoolData[]> {
   try {
+    // NOTE: Morpho renamed VaultV2sFilters.whitelisted → listed on 2026-05-14
+    // (deprecation + removal scheduled 2026-06-24, confirmed via API response).
     const query = `
       query {
-        vaultV2s(first: 100, where: { whitelisted: true }) {
+        vaultV2s(first: 100, where: { listed: true }) {
           items {
             address
             name
@@ -175,7 +177,9 @@ export async function fetchMorphoPools(): Promise<PoolData[]> {
     });
 
     if (!response.ok) {
-      throw new Error(`Morpho API error: ${response.status}`);
+      const errBody = await response.text().catch(() => '<no body>');
+      console.warn(`⚠️ Morpho API ${response.status}: ${errBody.slice(0, 300)} — returning 0 pools`);
+      return [];
     }
 
     const result = await response.json() as MorphoResponse;

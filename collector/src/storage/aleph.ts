@@ -16,8 +16,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { AuthenticatedAlephHttpClient } from '@aleph-sdk/client';
 import { ETHAccount, importAccountFromPrivateKey } from '@aleph-sdk/ethereum';
-import { ItemType, PaymentType } from '@aleph-sdk/message';
-import { Blockchain } from '@aleph-sdk/core';
+import { ItemType } from '@aleph-sdk/message';
 import { CONFIG } from '../config.js';
 import { AlephUploadResult, HistoryIndex, PoolHistory } from '../types.js';
 
@@ -77,13 +76,17 @@ export async function uploadToAleph(data: unknown, filename: string): Promise<Al
       channel: CONFIG.ALEPH_CHANNEL,
       fileObject: Buffer.from(content),
       storageEngine: ItemType.storage,
-      // Pay with credits (the account holds ~70M credits but 0 ALEPH, so
-      // the default hold-tier path 422s). Override via ALEPH_PAYMENT_TYPE
-      // if we ever want to switch to hold/superfluid.
-      payment: {
-        chain: Blockchain.ETH,
-        type: (process.env.ALEPH_PAYMENT_TYPE as PaymentType) || PaymentType.credit,
-      },
+      // NOTE: do NOT pass a `payment` field here. The Aleph production API
+      // does not yet support the payment schema for STORE messages — passing
+      // any payment object (hold, credit, superfluid) results in HTTP 422
+      // (InvalidMessageError). The SDK test suite skips payment tests for
+      // STORE with the comment "Unskip once the production API supports the
+      // new payment schema for STORE messages". All prior successful STOREs
+      // from this account have no payment field. Omitting it falls back to
+      // the Aleph default free-storage path, which works fine for small JSON
+      // blobs like ours.
+      // TODO: re-add payment once the Aleph API supports it (track upstream:
+      //   aleph-im/aleph-sdk-ts packages/message/__tests__/store/publish.test.ts)
       sync: true,
     });
 
