@@ -542,7 +542,7 @@ export async function fetchFelixPools(): Promise<PoolData[]> {
       throw new Error(`DefiLlama API error: ${response.status}`);
     }
 
-    const json = await response.json();
+    const json = (await response.json()) as { data?: Array<Record<string, unknown> & { project?: string; chain?: string; symbol?: string; apy?: number; apyBase?: number; apyReward?: number; tvlUsd?: number }> };
     const pools: PoolData[] = [];
     const supportedStablecoins = ['USDC', 'USDT'];
 
@@ -579,7 +579,7 @@ export async function fetchHyperLendPools(): Promise<PoolData[]> {
     const response = await fetch('https://yields.llama.fi/pools');
     if (!response.ok) return [];
 
-    const json = await response.json();
+    const json = (await response.json()) as { data?: Array<Record<string, unknown> & { project?: string; chain?: string; symbol?: string; apy?: number; apyBase?: number; apyReward?: number; tvlUsd?: number }> };
     const pools: PoolData[] = [];
     const supportedStablecoins = ['USDC', 'USDT'];
 
@@ -618,7 +618,7 @@ export async function fetchHyperBeatPools(): Promise<PoolData[]> {
       throw new Error(`DefiLlama API error: ${response.status}`);
     }
 
-    const json = await response.json();
+    const json = (await response.json()) as { data?: Array<Record<string, unknown> & { project?: string; chain?: string; symbol?: string; apy?: number; apyBase?: number; apyReward?: number; tvlUsd?: number }> };
     const pools: PoolData[] = [];
     const supportedStablecoins = ['USDC', 'USDT'];
 
