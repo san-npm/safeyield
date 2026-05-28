@@ -30,10 +30,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Yield Analytics - DeFi Protocol Comparison | Yiield',
     description: 'Track stablecoin yields across DeFi. Compare TVL distribution, protocol rankings, and APY trends. Find the best opportunities.',
-    url: 'https://app.yiield.xyz/analytics',
+    url: 'https://www.yiield.xyz/analytics',
     images: [
       {
-        url: 'https://app.yiield.xyz/og-analytics.png',
+        url: 'https://www.yiield.xyz/og-analytics.png',
         width: 1200,
         height: 630,
         alt: 'Yiield Analytics - DeFi Yield Data & Comparison',
@@ -46,12 +46,12 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Yield Analytics - DeFi Protocol Comparison | Yiield',
     description: 'Track stablecoin yields across DeFi. Compare TVL, protocol rankings, and APY trends.',
-    images: ['https://app.yiield.xyz/og-analytics.png'],
+    images: ['https://www.yiield.xyz/og-analytics.png'],
     site: '@yiield',
     creator: '@yiield',
   },
   alternates: {
-    canonical: 'https://app.yiield.xyz/analytics',
+    canonical: 'https://www.yiield.xyz/analytics',
   },
   robots: {
     index: true,
@@ -63,15 +63,15 @@ export const metadata: Metadata = {
 const analyticsSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  '@id': 'https://app.yiield.xyz/analytics',
+  '@id': 'https://www.yiield.xyz/analytics',
   name: 'DeFi Yield Analytics',
   description: 'Track and compare stablecoin yields across DeFi protocols with comprehensive analytics, TVL distribution, and protocol leaderboards.',
-  url: 'https://app.yiield.xyz/analytics',
+  url: 'https://www.yiield.xyz/analytics',
   isPartOf: {
     '@type': 'WebSite',
-    '@id': 'https://app.yiield.xyz/#website',
+    '@id': 'https://www.yiield.xyz/#website',
     name: 'Yiield',
-    url: 'https://app.yiield.xyz',
+    url: 'https://www.yiield.xyz',
   },
   breadcrumb: {
     '@type': 'BreadcrumbList',
@@ -80,13 +80,13 @@ const analyticsSchema = {
         '@type': 'ListItem',
         position: 1,
         name: 'Home',
-        item: 'https://app.yiield.xyz',
+        item: 'https://www.yiield.xyz',
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Analytics',
-        item: 'https://app.yiield.xyz/analytics',
+        item: 'https://www.yiield.xyz/analytics',
       },
     ],
   },

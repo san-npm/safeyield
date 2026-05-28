@@ -355,8 +355,8 @@ export async function fetchRealTokenPools(): Promise<Partial<YieldPool>[]> {
       headers: {
         'X-AUTH-REALT-TOKEN': REALT_API_KEY,
         'Content-Type': 'application/json',
-        'Referer': 'https://app.yiield.xyz',
-        'Origin': 'https://app.yiield.xyz',
+        'Referer': 'https://www.yiield.xyz',
+        'Origin': 'https://www.yiield.xyz',
       },
     });
 

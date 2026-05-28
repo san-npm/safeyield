@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'About Yiield — Mission, Methodology & Security Scoring',
     description: 'Learn how Yiield helps you find safe stablecoin yields with our unique security scoring system.',
-    url: 'https://app.yiield.xyz/about',
+    url: 'https://www.yiield.xyz/about',
     type: 'website',
     images: ['/og-image.png'],
   },
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     images: ['/og-image.png'],
   },
   alternates: {
-    canonical: 'https://app.yiield.xyz/about',
+    canonical: 'https://www.yiield.xyz/about',
   },
 };
 
@@ -41,7 +41,7 @@ const organizationSchema = {
   '@type': 'Organization',
   name: 'Yiield',
   url: 'https://yiield.xyz',
-  logo: 'https://app.yiield.xyz/logo.png',
+  logo: 'https://www.yiield.xyz/logo.png',
   description: 'DeFi stablecoin yield comparison platform with security scoring',
   founder: {
     '@type': 'Organization',

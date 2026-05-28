@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://app.yiield.xyz';
+  const baseUrl = 'https://www.yiield.xyz';
   const lastModified = new Date();
 
   return [

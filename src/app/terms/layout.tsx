@@ -6,17 +6,17 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Terms of Service - Yiield',
     description: 'Terms of Service for Yiield DeFi yield comparison platform.',
-    url: 'https://app.yiield.xyz/terms',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    url: 'https://www.yiield.xyz/terms',
+    images: ['https://www.yiield.xyz/og-image.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Terms of Service - Yiield',
     description: 'Terms of Service for Yiield DeFi yield comparison platform.',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    images: ['https://www.yiield.xyz/og-image.png'],
   },
   alternates: {
-    canonical: 'https://app.yiield.xyz/terms',
+    canonical: 'https://www.yiield.xyz/terms',
   },
 };
 

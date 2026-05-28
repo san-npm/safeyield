@@ -6,17 +6,17 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Disclaimer - Yiield DeFi Yield Comparison',
     description: 'Important disclaimer and risk information for using Yiield.',
-    url: 'https://app.yiield.xyz/disclaimer',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    url: 'https://www.yiield.xyz/disclaimer',
+    images: ['https://www.yiield.xyz/og-image.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Disclaimer - Yiield DeFi Yield Comparison',
     description: 'Important disclaimer and risk information for using Yiield.',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    images: ['https://www.yiield.xyz/og-image.png'],
   },
   alternates: {
-    canonical: 'https://app.yiield.xyz/disclaimer',
+    canonical: 'https://www.yiield.xyz/disclaimer',
   },
 };
 

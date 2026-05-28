@@ -6,17 +6,17 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FAQ - Yiield DeFi Yield Comparison',
     description: 'Find answers to common questions about Yiield, DeFi yields, stablecoins, and security scores.',
-    url: 'https://app.yiield.xyz/faq',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    url: 'https://www.yiield.xyz/faq',
+    images: ['https://www.yiield.xyz/og-image.png'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'FAQ - Yiield DeFi Yield Comparison',
     description: 'Find answers to common questions about Yiield, DeFi yields, stablecoins, and security scores.',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    images: ['https://www.yiield.xyz/og-image.png'],
   },
   alternates: {
-    canonical: 'https://app.yiield.xyz/faq',
+    canonical: 'https://www.yiield.xyz/faq',
   },
 };
 

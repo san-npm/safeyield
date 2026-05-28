@@ -6,7 +6,7 @@ import '@/styles/globals.css';
 // ============================================
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://app.yiield.xyz'),
+  metadataBase: new URL('https://www.yiield.xyz'),
 
   // Titre et description optimisés
   title: {
@@ -82,13 +82,13 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     alternateLocale: ['fr_FR', 'de_DE', 'es_ES', 'it_IT'],
-    url: 'https://app.yiield.xyz',
+    url: 'https://www.yiield.xyz',
     siteName: 'Yiield',
     title: 'Yiield - Best Stablecoin Yields & DeFi APY Comparison',
     description: 'Compare stablecoin yields from top DeFi protocols. Real-time APY rates with security scores for USDC, USDT, DAI, EURe. Find safe, high-yield opportunities.',
     images: [
       {
-        url: 'https://app.yiield.xyz/og-image.png',
+        url: 'https://www.yiield.xyz/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Yiield - Compare Best Stablecoin Yields in DeFi',
@@ -102,7 +102,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Yiield - Best Stablecoin Yields & DeFi APY Rates',
     description: 'Compare yields from Aave, Compound, Morpho & more. Security scores included.',
-    images: ['https://app.yiield.xyz/og-image.png'],
+    images: ['https://www.yiield.xyz/og-image.png'],
     site: '@yiield',
     creator: '@yiield',
   },
@@ -124,14 +124,14 @@ export const metadata: Metadata = {
   
   // Alternates multilingues (hreflang)
   alternates: {
-    canonical: 'https://app.yiield.xyz',
+    canonical: 'https://www.yiield.xyz',
     languages: {
-      'en': 'https://app.yiield.xyz',
-      'fr': 'https://app.yiield.xyz',
-      'de': 'https://app.yiield.xyz',
-      'es': 'https://app.yiield.xyz',
-      'it': 'https://app.yiield.xyz',
-      'x-default': 'https://app.yiield.xyz',
+      'en': 'https://www.yiield.xyz',
+      'fr': 'https://www.yiield.xyz',
+      'de': 'https://www.yiield.xyz',
+      'es': 'https://www.yiield.xyz',
+      'it': 'https://www.yiield.xyz',
+      'x-default': 'https://www.yiield.xyz',
     },
   },
   
@@ -176,9 +176,9 @@ export const viewport: Viewport = {
 const webAppSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
-  '@id': 'https://app.yiield.xyz/#webapp',
+  '@id': 'https://www.yiield.xyz/#webapp',
   name: 'Yiield',
-  url: 'https://app.yiield.xyz',
+  url: 'https://www.yiield.xyz',
   description: 'Compare the best stablecoin yields across DeFi protocols with security scores. Find safe, high-yield opportunities for USDC, USDT, DAI, and euro stablecoins.',
   applicationCategory: 'FinanceApplication',
   operatingSystem: 'Web Browser',
@@ -192,7 +192,7 @@ const webAppSchema = {
   author: {
     '@type': 'Organization',
     name: 'COMMIT MEDIA',
-    url: 'https://app.yiield.xyz',
+    url: 'https://www.yiield.xyz',
   },
   publisher: {
     '@type': 'Organization',
@@ -213,10 +213,10 @@ const webAppSchema = {
 const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  '@id': 'https://app.yiield.xyz/#organization',
+  '@id': 'https://www.yiield.xyz/#organization',
   name: 'Yiield',
-  url: 'https://app.yiield.xyz',
-  logo: 'https://app.yiield.xyz/logo.png',
+  url: 'https://www.yiield.xyz',
+  logo: 'https://www.yiield.xyz/logo.png',
   description: 'DeFi yield comparison platform with security scores',
   foundingDate: '2026',
   sameAs: [],
@@ -226,7 +226,7 @@ const organizationSchema = {
 const faqSchema = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  '@id': 'https://app.yiield.xyz/#faq',
+  '@id': 'https://www.yiield.xyz/#faq',
   mainEntity: [
     {
       '@type': 'Question',
@@ -328,7 +328,7 @@ const breadcrumbSchema = {
       '@type': 'ListItem',
       position: 1,
       name: 'Home',
-      item: 'https://app.yiield.xyz',
+      item: 'https://www.yiield.xyz',
     },
   ],
 };
@@ -337,7 +337,7 @@ const breadcrumbSchema = {
 const financialProductSchema = {
   '@context': 'https://schema.org',
   '@type': 'FinancialProduct',
-  '@id': 'https://app.yiield.xyz/#yields',
+  '@id': 'https://www.yiield.xyz/#yields',
   name: 'DeFi Stablecoin Yields Comparison',
   description: 'Compare and find the best stablecoin yields across decentralized finance protocols',
   provider: {
