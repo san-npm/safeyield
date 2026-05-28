@@ -53,7 +53,7 @@ async function getHistoryHash(): Promise<string> {
 
   // Try GitHub raw URL first (always up to date from Actions)
   try {
-    const githubUrl = 'https://raw.githubusercontent.com/clementfrmd/safeyield/main/public/apy-history-hash.txt';
+    const githubUrl = 'https://raw.githubusercontent.com/san-npm/safeyield/main/public/apy-history-hash.txt';
     const response = await fetch(githubUrl, { cache: 'no-store' });
     if (response.ok) {
       const hash = (await response.text()).trim();

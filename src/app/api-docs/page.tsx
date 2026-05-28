@@ -148,7 +148,7 @@ curl "https://api.yiield.xyz/api/v1/stats"`} />
               <ExternalLink className="w-3 h-3 ml-1" />
             </a>
             <a
-              href="https://github.com/clementfrmd/safeyield/tree/main/api-server"
+              href="https://github.com/san-npm/safeyield/tree/main/api-server"
               target="_blank"
               rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-lg border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition-colors text-sm inline-flex items-center gap-1"
@@ -312,7 +312,7 @@ curl "https://api2.aleph.im/api/v0/storage/raw/{HASH}"
         {/* Links */}
         <div className="mt-12 flex items-center gap-4">
           <a
-            href="https://github.com/clementfrmd/safeyield"
+            href="https://github.com/san-npm/safeyield"
             target="_blank"
             rel="noopener noreferrer"
             className="btn-primary"

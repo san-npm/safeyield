@@ -326,7 +326,7 @@ function AnalyticsContent() {
         // Try GitHub raw URL first (always up to date from Actions)
         let hash = '';
         try {
-          const githubUrl = 'https://raw.githubusercontent.com/clementfrmd/safeyield/main/public/apy-history-hash.txt';
+          const githubUrl = 'https://raw.githubusercontent.com/san-npm/safeyield/main/public/apy-history-hash.txt';
           const hashResponse = await fetch(githubUrl, { cache: 'no-store' });
           if (hashResponse.ok) {
             hash = (await hashResponse.text()).trim();
