@@ -11,9 +11,12 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@aleph-sdk/account": "^1.7.4",
     "@aleph-sdk/client": "^1.7.4",
+    "@aleph-sdk/core": "^1.7.4",
     "@aleph-sdk/ethereum": "^1.8.0",
     "@aleph-sdk/message": "^1.7.5",
+    "decimal.js": "^10.6.0",
     "dotenv": "^17.2.3"
   },
   "devDependencies": {
