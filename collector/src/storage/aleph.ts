@@ -109,15 +109,19 @@ async function uploadJsonToStorage(jsonContent: string): Promise<string> {
 async function broadcastStoreMessage(account: ETHAccount, storageHash: string): Promise<string> {
   const timestamp = Date.now() / 1000;
 
-  // Build the StoreContent JSON exactly as the successful January 2026
-  // STOREs did: no payment field, no extra_fields, just address/item_type/
-  // item_hash/time.  JSON.stringify with no spaces to match the SDK's
-  // sha256(JSON.stringify(content)) hashing.
+  // Build the StoreContent JSON. We use credit payment because:
+  // - Since 2025-04-04, STORE messages are no longer free (STORE_AND_PROGRAM_COST_CUTOFF)
+  // - The hold-tier free path requires storage_size_mib to be > 0 in the DB
+  //   at processing time, which is not guaranteed for our add_json uploads.
+  // - This account has 71M+ credits which far exceeds the cost for tiny JSON files
+  //   (pool data is < 10KB → cost << 1 credit/day).
+  // JSON.stringify with no spaces matches the SDK's sha256(JSON.stringify(content)) scheme.
   const storeContent = JSON.stringify({
     address: account.address,
     item_type: ItemType.storage,
     item_hash: storageHash,
     time: timestamp,
+    payment: { chain: Blockchain.ETH, type: 'credit' },
   });
 
   // Compute item_hash of the inline message (sha256 of the content string).
