@@ -63,20 +63,30 @@ export async function uploadToAleph(data: unknown, filename: string): Promise<Al
   }
 
   const content = JSON.stringify(data, null, 2);
-  const message = await ctx.client.createStore({
-    channel: CONFIG.ALEPH_CHANNEL,
-    fileObject: Buffer.from(content),
-    storageEngine: ItemType.storage,
-    sync: true,
-  });
+  try {
+    const message = await ctx.client.createStore({
+      channel: CONFIG.ALEPH_CHANNEL,
+      fileObject: Buffer.from(content),
+      storageEngine: ItemType.storage,
+      sync: true,
+    });
 
-  const hash = message.item_hash;
-  if (!hash) {
-    throw new Error(`Aleph createStore for ${filename} returned no item_hash`);
+    const hash = message.item_hash;
+    if (!hash) {
+      throw new Error(`Aleph createStore for ${filename} returned no item_hash`);
+    }
+
+    console.log(`☁️ Uploaded ${filename} to Aleph: ${hash}`);
+    return { hash, success: true };
+  } catch (error: unknown) {
+    // Surface the actual server response so we can diagnose 4xx/5xx,
+    // not just the bare stack trace.
+    const err = error as { response?: { status?: number; data?: unknown }; message?: string };
+    const status = err.response?.status;
+    const body = err.response?.data;
+    const detail = body !== undefined ? JSON.stringify(body) : err.message;
+    throw new Error(`Aleph createStore failed for ${filename} (status ${status ?? '?'}): ${detail}`);
   }
-
-  console.log(`☁️ Uploaded ${filename} to Aleph: ${hash}`);
-  return { hash, success: true };
 }
 
 /**
