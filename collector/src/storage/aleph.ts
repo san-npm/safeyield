@@ -44,9 +44,17 @@ function initAlephClient(): { client: AuthenticatedAlephHttpClient; account: ETH
     return null;
   }
 
+  // The SDK's built-in default points at api3.aleph.im, which is currently
+  // unreachable from CI runners — every upload returns "ERR_BAD_REQUEST"
+  // because the connection never establishes cleanly. Use api2.aleph.im
+  // (which is the same host the rest of CONFIG already points at). Allow
+  // overriding via ALEPH_API_SERVER so we can flip endpoints without a code
+  // change when api3 comes back.
+  const apiServer = process.env.ALEPH_API_SERVER || 'https://api2.aleph.im';
+
   alephAccount = importAccountFromPrivateKey(privateKey);
-  alephClient = new AuthenticatedAlephHttpClient(alephAccount);
-  console.log(`✅ Aleph client initialized for ${alephAccount.address}`);
+  alephClient = new AuthenticatedAlephHttpClient(alephAccount, apiServer);
+  console.log(`✅ Aleph client initialized for ${alephAccount.address} (api: ${apiServer})`);
 
   return { client: alephClient, account: alephAccount };
 }
