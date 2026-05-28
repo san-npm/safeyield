@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev)
-RUN npm ci
+# Install all dependencies (including dev), refuse install scripts from deps
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY tsconfig.json ./
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
@@ -33,6 +33,9 @@ COPY --from=builder /app/dist ./dist
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3001
+
+# Drop privileges: run as the 'node' user that node:20-alpine ships with
+USER node
 
 # Expose port
 EXPOSE 3001

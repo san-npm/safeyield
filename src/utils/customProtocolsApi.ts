@@ -346,10 +346,13 @@ export async function fetchSteakhousePools(): Promise<Partial<YieldPool>[]> {
 // 4. REALTOKEN RMM (Gnosis) - Tokenized Real Estate
 // ============================================
 
-const REALT_API_KEY = 'cf8f77bc-preprod-12a9-587d-9e2d19750b06';
+const REALT_API_KEY = process.env.NEXT_PUBLIC_REALT_API_KEY;
 const REALT_API_BASE = 'https://api.realtoken.community';
 
 export async function fetchRealTokenPools(): Promise<Partial<YieldPool>[]> {
+  if (!REALT_API_KEY) {
+    return [];
+  }
   try {
     const response = await fetch(`${REALT_API_BASE}/v1/token`, {
       headers: {

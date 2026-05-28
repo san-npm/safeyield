@@ -8,12 +8,18 @@
     "build": "tsc",
     "start": "node dist/index.js"
   },
-  "keywords": ["defi", "yield", "api", "stablecoin"],
+  "keywords": [
+    "defi",
+    "yield",
+    "api",
+    "stablecoin"
+  ],
   "author": "Yiield",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2"
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

@@ -15,6 +15,9 @@ runcmd:
   - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
   - apt-get install -y nodejs
 
+  # Create a dedicated unprivileged user to run the API
+  - useradd --system --no-create-home --shell /usr/sbin/nologin yiield
+
   # Create app directory
   - mkdir -p /opt/yiield-api
   - cd /opt/yiield-api
@@ -24,8 +27,11 @@ runcmd:
 
   # Install and build API
   - cd /opt/yiield-api/api-server
-  - npm ci
+  - npm ci --ignore-scripts
   - npm run build
+
+  # Hand ownership to the unprivileged user
+  - chown -R yiield:yiield /opt/yiield-api
 
   # Create systemd service
   - |
@@ -36,13 +42,25 @@ runcmd:
 
     [Service]
     Type=simple
-    User=root
+    User=yiield
+    Group=yiield
     WorkingDirectory=/opt/yiield-api/api-server
     ExecStart=/usr/bin/node dist/index.js
     Restart=on-failure
     RestartSec=10
     Environment=NODE_ENV=production
     Environment=PORT=3001
+    # Hardening
+    NoNewPrivileges=true
+    ProtectSystem=strict
+    ProtectHome=true
+    PrivateTmp=true
+    PrivateDevices=true
+    ProtectKernelTunables=true
+    ProtectKernelModules=true
+    ProtectControlGroups=true
+    RestrictAddressFamilies=AF_INET AF_INET6
+    LockPersonality=true
 
     [Install]
     WantedBy=multi-user.target

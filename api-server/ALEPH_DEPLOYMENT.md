@@ -162,4 +162,4 @@ For a 1 vCPU / 256MB instance, expect minimal costs (~$5-10/month in ALEPH token
 
 - Aleph Docs: https://docs.aleph.im
 - Aleph Discord: https://discord.gg/aleph-im
-- Yiield GitHub: https://github.com/clementfrmd/safeyield
+- Yiield GitHub: https://github.com/san-npm/safeyield

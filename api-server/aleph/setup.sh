@@ -26,18 +26,25 @@ cd /opt/yiield-api
 
 # Clone the repository (or copy files)
 echo "Downloading Yiield API..."
-git clone --depth 1 https://github.com/clementfrmd/safeyield.git .
+git clone --depth 1 https://github.com/san-npm/safeyield.git .
+
+# Create unprivileged user for the API service
+echo "Creating yiield service user..."
+useradd --system --no-create-home --shell /usr/sbin/nologin yiield 2>/dev/null || true
 
 # Navigate to API server
 cd api-server
 
-# Install dependencies
+# Install dependencies (refuse to run install scripts from deps)
 echo "Installing dependencies..."
-npm ci --only=production
+npm ci --omit=dev --ignore-scripts
 
 # Build TypeScript
 echo "Building..."
 npm run build
+
+# Hand ownership to the unprivileged user
+chown -R yiield:yiield /opt/yiield-api
 
 # Create systemd service
 echo "Creating systemd service..."
@@ -48,13 +55,25 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=yiield
+Group=yiield
 WorkingDirectory=/opt/yiield-api/api-server
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=3001
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+LockPersonality=true
 
 [Install]
 WantedBy=multi-user.target
