@@ -41,10 +41,19 @@ jobs:
       - name: Get current index hash
         id: get-hash
         run: |
-          # Fetch the current index hash from the repo (if exists)
-          CURRENT_HASH=$(cat public/apy-history-hash.txt 2>/dev/null || echo "")
-          echo "Current hash: $CURRENT_HASH"
-          echo "hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
+          # Read the current index hash. Only forward it to GITHUB_OUTPUT if it
+          # matches a strict format (64 hex chars = Aleph SHA-256 item_hash).
+          # This blocks GitHub Actions output injection if the file is ever
+          # tampered with, and silently drops "local-..." pseudo-hashes that
+          # the legacy SDK left behind so we don't feed them back in.
+          CURRENT_HASH=$(cat public/apy-history-hash.txt 2>/dev/null || true)
+          if [[ "$CURRENT_HASH" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "Current hash: $CURRENT_HASH"
+            echo "hash=$CURRENT_HASH" >> "$GITHUB_OUTPUT"
+          else
+            echo "No valid current hash (got: '$CURRENT_HASH')"
+            echo "hash=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Run APY collector
         working-directory: collector
@@ -55,15 +64,24 @@ jobs:
 
       - name: Update index hash in repo
         run: |
-          # Read the new hash
+          # Read the new hash and require strict 64-hex-char format
+          # (Aleph SHA-256 item_hash). This rejects "local-..." pseudo-hashes
+          # left over from SDK-init failures (the frontend can't resolve them
+          # on IPFS so committing them silently breaks APY history) and also
+          # any malformed value that could enable workflow injection.
           NEW_HASH=$(cat collector/data/index-hash.txt)
+          if [[ ! "$NEW_HASH" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "::error::Invalid index hash, refusing to commit: $NEW_HASH"
+            echo "::error::Aleph upload did not produce a real CID (ALEPH_PRIVATE_KEY missing or invalid?)"
+            exit 1
+          fi
           echo "New index hash: $NEW_HASH"
 
           # Update the hash file
-          echo "$NEW_HASH" > public/apy-history-hash.txt
+          printf '%s\n' "$NEW_HASH" > public/apy-history-hash.txt
 
           # Also update .env.production for static builds
-          echo "NEXT_PUBLIC_HISTORY_INDEX_HASH=$NEW_HASH" > .env.production
+          printf 'NEXT_PUBLIC_HISTORY_INDEX_HASH=%s\n' "$NEW_HASH" > .env.production
 
       - name: Commit and push new hash
         run: |

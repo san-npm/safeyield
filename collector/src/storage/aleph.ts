@@ -1,9 +1,22 @@
 // ============================================
 // Aleph IPFS Storage Module
+//
+// Uses the modern @aleph-sdk/* scoped packages.
+//
+// Failure semantics:
+//   - If ALEPH_PRIVATE_KEY is set, uploads to Aleph are MANDATORY. Any
+//     SDK or network error propagates out so the caller (and the CI
+//     workflow) can fail loudly instead of silently committing a
+//     "local-..." pseudo-hash that the frontend then can't fetch.
+//   - If ALEPH_PRIVATE_KEY is unset, the module falls back to writing
+//     under collector/data/ for local development.
 // ============================================
 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { AuthenticatedAlephHttpClient } from '@aleph-sdk/client';
+import { ETHAccount, importAccountFromPrivateKey } from '@aleph-sdk/ethereum';
+import { ItemType } from '@aleph-sdk/message';
 import { CONFIG } from '../config.js';
 import { AlephUploadResult, HistoryIndex, PoolHistory } from '../types.js';
 
@@ -11,92 +24,71 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DATA_DIR = join(__dirname, '../../data');
 
-// ============================================
-// Aleph SDK Integration (Optional)
-// ============================================
+let alephClient: AuthenticatedAlephHttpClient | null = null;
+let alephAccount: ETHAccount | null = null;
+let initAttempted = false;
 
-let alephInitialized = false;
-let alephAccount: any = null;
-let alephStorePublish: any = null;
+function alephEnabled(): boolean {
+  return Boolean(process.env.ALEPH_PRIVATE_KEY);
+}
 
-async function initAlephClient(): Promise<boolean> {
-  if (alephInitialized) {
-    return alephAccount !== null;
+function initAlephClient(): { client: AuthenticatedAlephHttpClient; account: ETHAccount } | null {
+  if (initAttempted) {
+    return alephClient && alephAccount ? { client: alephClient, account: alephAccount } : null;
   }
-  alephInitialized = true;
+  initAttempted = true;
 
-  if (!process.env.ALEPH_PRIVATE_KEY) {
-    console.log('ℹ️ No ALEPH_PRIVATE_KEY set. Using local storage.');
-    return false;
+  const privateKey = process.env.ALEPH_PRIVATE_KEY;
+  if (!privateKey) {
+    console.log('ℹ️ ALEPH_PRIVATE_KEY not set — using local storage (development mode)');
+    return null;
   }
 
-  try {
-    // Import Aleph SDK
-    const { accounts, messages } = await import('aleph-sdk-ts');
+  alephAccount = importAccountFromPrivateKey(privateKey);
+  alephClient = new AuthenticatedAlephHttpClient(alephAccount);
+  console.log(`✅ Aleph client initialized for ${alephAccount.address}`);
 
-    // Get Ethereum account
-    const privateKey = process.env.ALEPH_PRIVATE_KEY;
-    alephAccount = accounts.ethereum.ImportAccountFromPrivateKey(privateKey);
-    alephStorePublish = messages.store.Publish;
-
-    console.log(`✅ Aleph account initialized: ${alephAccount.address}`);
-    return true;
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.warn('⚠️ Aleph SDK initialization failed:', errorMessage);
-    return false;
-  }
+  return { client: alephClient, account: alephAccount };
 }
 
 /**
- * Upload data to Aleph IPFS
+ * Upload data to Aleph IPFS storage. Throws when ALEPH_PRIVATE_KEY is set and
+ * the upload fails, so callers (notably the CI workflow) can surface the
+ * failure instead of silently downgrading to local pseudo-hashes.
  */
 export async function uploadToAleph(data: unknown, filename: string): Promise<AlephUploadResult> {
-  const initialized = await initAlephClient();
-
-  if (!initialized || !alephAccount || !alephStorePublish) {
+  const ctx = initAlephClient();
+  if (!ctx) {
     return uploadToLocal(data, filename);
   }
 
-  try {
-    const content = JSON.stringify(data, null, 2);
+  const content = JSON.stringify(data, null, 2);
+  const message = await ctx.client.createStore({
+    channel: CONFIG.ALEPH_CHANNEL,
+    fileObject: Buffer.from(content),
+    storageEngine: ItemType.storage,
+    sync: true,
+  });
 
-    const message = await alephStorePublish({
-      account: alephAccount,
-      fileObject: Buffer.from(content),
-      channel: CONFIG.ALEPH_CHANNEL,
-      storageEngine: 'storage',
-    });
-
-    const hash = message?.content?.item_hash || message?.item_hash || '';
-    console.log(`☁️ Uploaded ${filename} to Aleph: ${hash}`);
-
-    return {
-      hash,
-      success: true,
-    };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Aleph upload error for ${filename}:`, errorMessage);
-    // Fallback to local storage
-    return uploadToLocal(data, filename);
+  const hash = message.item_hash;
+  if (!hash) {
+    throw new Error(`Aleph createStore for ${filename} returned no item_hash`);
   }
+
+  console.log(`☁️ Uploaded ${filename} to Aleph: ${hash}`);
+  return { hash, success: true };
 }
 
 /**
- * Fetch data from Aleph IPFS
+ * Fetch data from Aleph IPFS via the public storage gateway.
  */
 export async function fetchFromAleph<T>(hash: string): Promise<T | null> {
   try {
-    const url = `${CONFIG.ALEPH_STORAGE_URL}${hash}`;
-    const response = await fetch(url);
-
+    const response = await fetch(`${CONFIG.ALEPH_STORAGE_URL}${hash}`);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-
-    const data = await response.json() as T;
-    return data;
+    return (await response.json()) as T;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`❌ Aleph fetch error for ${hash}:`, errorMessage);
@@ -105,16 +97,13 @@ export async function fetchFromAleph<T>(hash: string): Promise<T | null> {
 }
 
 /**
- * Get the current index hash from environment or local storage
+ * Read the current index hash from environment or local cache file.
  */
 export async function getCurrentIndexHash(): Promise<string | null> {
-  // First check environment variable
   const envHash = process.env.HISTORY_INDEX_HASH;
   if (envHash) {
     return envHash;
   }
-
-  // Then check local index file
   try {
     const fs = await import('fs/promises');
     const localIndexPath = join(DATA_DIR, 'index-hash.txt');
@@ -126,7 +115,7 @@ export async function getCurrentIndexHash(): Promise<string | null> {
 }
 
 /**
- * Save the current index hash locally
+ * Persist the current index hash locally for follow-up runs.
  */
 export async function saveIndexHash(hash: string): Promise<void> {
   try {
@@ -144,42 +133,24 @@ export async function saveIndexHash(hash: string): Promise<void> {
 // Local File Storage (Development Fallback)
 // ============================================
 
-/**
- * Upload data to local filesystem (development mode)
- */
 async function uploadToLocal(data: unknown, filename: string): Promise<AlephUploadResult> {
-  try {
-    const fs = await import('fs/promises');
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.mkdir(join(DATA_DIR, 'pools'), { recursive: true });
+  const fs = await import('fs/promises');
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.mkdir(join(DATA_DIR, 'pools'), { recursive: true });
 
-    const filePath = join(DATA_DIR, filename);
-    const content = JSON.stringify(data, null, 2);
-    await fs.writeFile(filePath, content);
+  const filePath = join(DATA_DIR, filename);
+  const content = JSON.stringify(data, null, 2);
+  await fs.writeFile(filePath, content);
 
-    // Generate a pseudo-hash based on content
-    const hash = `local-${Buffer.from(content).toString('base64').slice(0, 16)}`;
+  // Pseudo-hash so the rest of the pipeline has something stable to key on,
+  // but prefixed so anything downstream can detect that this is NOT an
+  // Aleph CID and reject it (the frontend filters these out).
+  const hash = `local-${Buffer.from(content).toString('base64').slice(0, 16)}`;
 
-    console.log(`💾 Saved ${filename} locally`);
-
-    return {
-      hash,
-      success: true,
-    };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Local save error for ${filename}:`, errorMessage);
-    return {
-      hash: '',
-      success: false,
-      error: errorMessage,
-    };
-  }
+  console.log(`💾 Saved ${filename} locally (hash: ${hash})`);
+  return { hash, success: true };
 }
 
-/**
- * Fetch data from local filesystem (development mode)
- */
 export async function fetchFromLocal<T>(filename: string): Promise<T | null> {
   try {
     const fs = await import('fs/promises');
@@ -192,34 +163,37 @@ export async function fetchFromLocal<T>(filename: string): Promise<T | null> {
 }
 
 /**
- * Get existing pool history from local storage
+ * Get existing pool history. Tries local cache first (dev), then Aleph if
+ * we have an index hash pointing into the network.
  */
 export async function getExistingPoolHistory(poolId: string): Promise<PoolHistory | null> {
-  // Try local first (development)
   const local = await fetchFromLocal<PoolHistory>(`pools/${poolId}.json`);
   if (local) return local;
 
-  // Try Aleph if we have an index hash
   const indexHash = await getCurrentIndexHash();
-  if (!indexHash) return null;
+  if (!indexHash || indexHash.startsWith('local-')) return null;
 
   const index = await fetchFromAleph<HistoryIndex>(indexHash);
   if (!index?.pools[poolId]?.hash) return null;
-
   return fetchFromAleph<PoolHistory>(index.pools[poolId].hash);
 }
 
 /**
- * Get existing index from local or Aleph storage
+ * Get the existing history index from local cache or from Aleph.
  */
 export async function getExistingIndex(): Promise<HistoryIndex | null> {
-  // Try local first (development)
   const local = await fetchFromLocal<HistoryIndex>('index.json');
   if (local) return local;
 
-  // Try Aleph
   const indexHash = await getCurrentIndexHash();
-  if (!indexHash) return null;
-
+  if (!indexHash || indexHash.startsWith('local-')) return null;
   return fetchFromAleph<HistoryIndex>(indexHash);
+}
+
+/**
+ * Whether Aleph publishing is enabled (i.e. an account key is configured).
+ * Callers can use this to decide whether to abort the run vs degrade.
+ */
+export function isAlephEnabled(): boolean {
+  return alephEnabled();
 }
